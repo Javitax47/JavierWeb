@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es" data-lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Javier Camarena — Ingeniería & Sistemas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/source.css">
+<style>
+  /* Estilos para el sistema unificado de proyectos (Acordeón Avanzado) */
+  .project-item {
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    transition: background-color 0.25s ease;
+    scroll-margin-top: 90px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Indicador vertical de estado */
+  .project-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--accent);
+    transform: scaleY(0);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: center;
+    z-index: 2;
+  }
+  .project-item.is-expanded::before {
+    transform: scaleY(1);
+  }
+
+  /* Efecto Spotlight dinámico acoplado al cursor */
+  .project-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(122, 223, 200, 0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .project-item:hover::after {
+    opacity: 1;
+  }
+
+  .project-row {
+    width: 100%;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    padding: 18px 24px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 14px;
+    gap: 16px;
+    outline: none;
+    position: relative;
+    z-index: 2;
+    transition: color 0.25s ease, padding-left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .project-row:hover {
+    padding-left: 28px;
+    color: var(--accent);
+  }
+  .project-row:focus-visible {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .proj-chevron {
+    font-size: 18px;
+    color: var(--muted);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.35s ease;
+    display: inline-block;
+    width: 12px;
+  }
+  .project-item.is-expanded .proj-chevron {
+    transform: rotate(90deg);
+    color: var(--accent);
+  }
+  .proj-row-grid {
+    display: grid;
+    grid-template-columns: 32px 1.5fr 1fr 80px 110px;
+    align-items: center;
+    width: 100%;
+    gap: 16px;
+  }
+  .proj-row-num {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .proj-row-name {
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .proj-row-file {
+    color: var(--accent);
+    opacity: 0.85;
+    font-size: 12px;
+  }
+  .proj-row-year {
+    color: var(--muted);
+  }
+  .proj-row-status {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .proj-row-status.wip { color: #e8a838; }
+  .proj-row-status.ok { color: #61d095; }
+  .proj-row-status.plan { color: #b49cff; }
+  .proj-row-status.res { color: #ff90a8; }
+
+  @media (max-width: 768px) {
+    .proj-row-grid {
+      grid-template-columns: 24px 1fr 90px;
+      gap: 8px;
+    }
+    .proj-row-file, .proj-row-year {
+      display: none;
+    }
+  }
+
+  /* Contenedores de colapso con curvas fluidas */
+  .project-details-wrap {
+    height: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+    transition: height 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .project-details-content {
+    padding: 12px 24px 32px 24px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition-delay: 0.05s;
+  }
+  .project-item.is-expanded .project-details-content {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .proj-panel {
+    border-top: 1px dashed rgba(255, 255, 255, 0.05);
+    margin-top: 0;
+  }
+
+  /* --- NEUTRALIZACIÓN DE BORDES RÍGIDOS EN HOVER --- */
+  .mosaic-tile, .mosaic-tile * {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .mosaic-tile::before, .mosaic-tile::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* --- PROFUNDIDAD DE CAMPO CINEMATOGRÁFICA --- */
+  .proj-mosaic {
+    gap: 12px;
+  }
+  .mosaic-tile {
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+                filter 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+                opacity 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    will-change: transform, filter, opacity;
+  }
+  /* Las tarjetas no activas se difuminan de manera gradual */
+  .proj-mosaic:hover .mosaic-tile.is-ambient,
+  .proj-mosaic:focus-within .mosaic-tile.is-ambient {
+    opacity: 0.45;
+    filter: blur(1.8px) grayscale(20%);
+  }
+  /* La tarjeta enfocada resalta limpia y nítidamente sin bordes.
+     Sin box-shadow aqui: la pieza enfocada usa object-fit:contain (puede
+     dejar un hueco transparente si el aspect-ratio no llena la celda), y un
+     box-shadow en esta caja dibujaba un rectangulo de sombra en ese hueco
+     que no correspondia a ningun borde visible de la imagen. La sombra real
+     va en .mosaic-tile.is-focus .mosaic-media via filter:drop-shadow (ver
+     css/source.css), que sigue el contorno pintado de la imagen. */
+  .proj-mosaic .mosaic-tile:hover,
+  .proj-mosaic .mosaic-tile:focus-visible,
+  .proj-mosaic .mosaic-tile.is-focus {
+    opacity: 1 !important;
+    filter: blur(0px) grayscale(0%) !important;
+    z-index: 10;
+  }
+</style>
+</head>
+<body data-screen-label="D · Source">
+<script>
+  try {
+    if (sessionStorage.getItem('boot-done') === '1') {
+      document.documentElement.classList.add('skip-boot');
+    }
+  } catch (e) {}
+</script>
+<div id="bg-viewport" aria-hidden="true">
+  <pre id="bg-code"></pre>
+</div>
+<div class="grain"></div>
+<div class="cursor" id="cursor"></div>
+<div id="ac" hidden></div>
+<!-- CUSTOM SCROLLBAR (HUD) -->
+<div id="hud-scroll-track" aria-hidden="true">
+  <div id="hud-scroll-thumb">
+    <div id="hud-scroll-info"><span id="hud-scroll-val"></span></div>
+  </div>
+</div>
+
+<div id="boot-overlay" aria-hidden="true" data-state="idle">
+  <div class="boot-crt"></div>
+  <div class="boot-grid"></div>
+  <div class="boot-sweep"></div>
+  <div class="boot-particles"></div>
+  <div class="boot-name">
+    <span class="g">j</span><span class="g">a</span><span class="g">v</span><span class="g">i</span><span class="g">t</span><span class="g">a</span><span class="g">x</span><span class="g dot">4</span><span class="g">7</span>
+  </div>
+  <div class="boot-prompt">
+    <span class="p-arrow">&gt;</span><span class="p-txt"> ready</span><span class="p-caret"></span>
+  </div>
+</div>
+
+<div class="shell">
+
+  <header class="top">
+    <a class="brand" href="#hero"><span class="brand-text">Javier</span><span class="dot">.</span></a>
+    <nav>
+      <a href="#hero">Inicio</a>
+      <a href="#skills">Habilidades</a>
+      <a href="#projects">Proyectos</a>
+      <a href="#log">Trayectoria</a>
+      <a href="#contact">Contacto</a>
+    </nav>
+    <div class="right">
+      <span class="lang">
+        <button data-set-lang="es" class="on">ES</button>
+        <button data-set-lang="en">EN</button>
+      </span>
+      <span class="theme">
+        <button data-set-theme="dark" class="on" title="Oscuro">☾</button>
+        <button data-set-theme="light" title="Claro">☀</button>
+      </span>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section id="hero">
+    <p class="hero-prompt">
+      <span class="p-path">~/projects</span> javier@upv<span style="color:var(--muted)">$</span><span class="p-cur"></span>
+    </p>
+    <h1>
+      <span data-compile data-compile-dur="520" data-ref="name">Javier</span><span class="dot">.</span>
+    </h1>
+    <p id="hero-tagline" class="tagline" data-ref="tagline"
+       data-es-0="Ingeniería desde el código hasta el circuito."
+       data-en-0="Engineering from code to circuit."
+    >
+      Ingeniería desde el código hasta el circuito.
+    </p>
+    <div class="hero-waveform" aria-hidden="true">
+      <svg viewBox="0 0 1200 28" preserveAspectRatio="none">
+        <path d="M0,14 L1200,14" stroke="var(--accent)" stroke-width="0.5" stroke-dasharray="3 5" fill="none" opacity="0.4"/>
+        <path id="hw-signal" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+      </svg>
+    </div>
+    <div class="marquee-wrap" aria-hidden="true">
+      <!-- El listado va DUPLICADO a proposito: la animacion `marquee` desplaza
+           translateX(-50%), es decir el ancho de una copia, para hacer bucle sin
+           costura. Si edita la lista, aplique el MISMO cambio a las dos copias. -->
+      <div class="marquee-track">
+        <!-- copia 1 -->
+        <span>React / Next</span><span class="sep">·</span>
+        <span>Node.js</span><span class="sep">·</span>
+        <span>PyTorch</span><span class="sep">·</span>
+        <span>TensorFlow</span><span class="sep">·</span>
+        <span>CUDA</span><span class="sep">·</span>
+        <span>C++20</span><span class="sep">·</span>
+        <span>Python</span><span class="sep">·</span>
+        <span>Godot 4.7</span><span class="sep">·</span>
+        <span>Unity</span><span class="sep">·</span>
+        <span>C#</span><span class="sep">·</span>
+        <span>WebGL</span><span class="sep">·</span>
+        <span>KiCad</span><span class="sep">·</span>
+        <span>SPICE</span><span class="sep">·</span>
+        <span>ESP32</span><span class="sep">·</span>
+        <span>Raspberry Pi</span><span class="sep">·</span>
+        <span>Docker</span><span class="sep">·</span>
+        <span>AWS</span><span class="sep">·</span>
+        <span>Firebase</span><span class="sep">·</span>
+        <!-- copia 2 (identica) -->
+        <span>React / Next</span><span class="sep">·</span>
+        <span>Node.js</span><span class="sep">·</span>
+        <span>PyTorch</span><span class="sep">·</span>
+        <span>TensorFlow</span><span class="sep">·</span>
+        <span>CUDA</span><span class="sep">·</span>
+        <span>C++20</span><span class="sep">·</span>
+        <span>Python</span><span class="sep">·</span>
+        <span>Godot 4.7</span><span class="sep">·</span>
+        <span>Unity</span><span class="sep">·</span>
+        <span>C#</span><span class="sep">·</span>
+        <span>WebGL</span><span class="sep">·</span>
+        <span>KiCad</span><span class="sep">·</span>
+        <span>SPICE</span><span class="sep">·</span>
+        <span>ESP32</span><span class="sep">·</span>
+        <span>Raspberry Pi</span><span class="sep">·</span>
+        <span>Docker</span><span class="sep">·</span>
+        <span>AWS</span><span class="sep">·</span>
+        <span>Firebase</span><span class="sep">·</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section id="skills" class="ch">
+    <p class="ch-label" data-compile data-compile-dur="280" data-es="HABILIDADES" data-en="SKILLS">HABILIDADES</p>
+    <div class="skills">
+      <div class="skill-domain">
+        <h3 data-compile data-compile-delay="0" data-compile-dur="240" data-es="Desarrollo web y backend" data-en="Web &amp; backend development">Desarrollo web y backend</h3>
+        <p data-es="<span class='k'>React/Next</span>, Vite, JavaScript, HTML5/CSS3, UX/UI y arquitecturas offline-first (PWA · IndexedDB · WebGL). Backend: Node.js, REST APIs, Firebase, MySQL, PHP/XAMPP, big data, Docker, Git, VirtualBox, QGIS y AWS." data-en="<span class='k'>React/Next</span>, Vite, JavaScript, HTML5/CSS3, UX/UI and offline-first architectures (PWA · IndexedDB · WebGL). Backend: Node.js, REST APIs, Firebase, MySQL, PHP/XAMPP, big data, Docker, Git, VirtualBox, QGIS and AWS.">
+          <span class="k">React/Next</span>, Vite, JavaScript, HTML5/CSS3, UX/UI y arquitecturas offline-first (PWA · IndexedDB · WebGL). Backend: Node.js, REST APIs, Firebase, MySQL, PHP/XAMPP, big data, Docker, Git, VirtualBox, QGIS y AWS.
+        </p>
+      </div>
+      <div class="skill-domain">
+        <h3 data-compile data-compile-delay="60" data-compile-dur="260" data-es="IA y alto rendimiento" data-en="AI &amp; high-performance computing">IA y alto rendimiento</h3>
+        <p data-es="<span class='k'>PyTorch</span>, TensorFlow, scikit-learn, CNN, Vision Transformers, aprendizaje profundo, visión por computador y procesamiento de señales (datos de LIGO/Virgo, Conda, Google Colab). C++20, C, Python, CUDA, paralelismo, optimización y perfilado." data-en="<span class='k'>PyTorch</span>, TensorFlow, scikit-learn, CNN, Vision Transformers, deep learning, computer vision and signal processing (LIGO/Virgo data, Conda, Google Colab). C++20, C, Python, CUDA, parallelism, optimisation and profiling.">
+          <span class="k">PyTorch</span>, TensorFlow, scikit-learn, CNN, Vision Transformers, aprendizaje profundo, visión por computador y procesamiento de señales (datos de LIGO/Virgo, Conda, Google Colab). C++20, C, Python, CUDA, paralelismo, optimización y perfilado.
+        </p>
+      </div>
+      <div class="skill-domain">
+        <h3 data-compile data-compile-delay="120" data-compile-dur="260" data-es="Hardware, electrónica e IoT" data-en="Hardware, electronics &amp; IoT">Hardware, electrónica e IoT</h3>
+        <p data-es="<span class='k'>KiCad</span>, SPICE, ruteado de PCB, soldadura SMD, Peltier, diseño analógico, modelado e impresión 3D e instrumentación de laboratorio. Embebido: ESP32/Arduino, M5Stack, Raspberry Pi, firmware C/C++, sensores y telemetría (MQTT · BLE)." data-en="<span class='k'>KiCad</span>, SPICE, PCB routing, SMD soldering, Peltier, analog design, 3D modelling and printing, and lab instrumentation. Embedded: ESP32/Arduino, M5Stack, Raspberry Pi, C/C++ firmware, sensors and telemetry (MQTT · BLE).">
+          <span class="k">KiCad</span>, SPICE, ruteado de PCB, soldadura SMD, Peltier, diseño analógico, modelado e impresión 3D e instrumentación de laboratorio. Embebido: ESP32/Arduino, M5Stack, Raspberry Pi, firmware C/C++, sensores y telemetría (MQTT · BLE).
+        </p>
+      </div>
+      <div class="skill-domain">
+        <h3 data-compile data-compile-delay="180" data-compile-dur="260" data-es="Motores 3D y XR" data-en="3D engines &amp; XR">Motores 3D y XR</h3>
+        <p data-es="<span class='k'>Godot 4.7</span>, Unity, GDScript, C#, GL Compatibility, compute shaders, físicas de juego, generación procedural, origen flotante a escala planetaria y VR · AR · XR." data-en="<span class='k'>Godot 4.7</span>, Unity, GDScript, C#, GL Compatibility, compute shaders, game physics, procedural generation, planet-scale floating origin and VR · AR · XR.">
+          <span class="k">Godot 4.7</span>, Unity, GDScript, C#, GL Compatibility, compute shaders, físicas de juego, generación procedural, origen flotante a escala planetaria y VR · AR · XR.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- UNIFIED PROJECTS ACCORDION -->
+  <section id="projects" class="ch">
+    <div class="catalog-head">
+      <p class="ch-label" data-compile data-compile-dur="280" data-es="PROYECTOS" data-en="PROJECTS">PROYECTOS</p>
+    </div>
+
+    <div class="projects-list">
+
+      <!-- PROYECTO 01 (Desplegado por defecto) -->
+      <div class="project-item is-expanded" data-proj="gw" data-cat="ai software" id="p-gw">
+        <button class="project-row" aria-expanded="true" aria-controls="content-gw">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">01</span>
+            <span class="proj-row-name" data-es="Ondas gravitacionales" data-en="Gravitational waves">Ondas gravitacionales</span>
+            <span class="proj-row-file">TFG_GravitationalWaves_AI</span>
+            <span class="proj-row-year">2025</span>
+            <span class="proj-row-status wip">● <span data-es="en curso" data-en="in progress">en curso</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-gw" style="height: auto; overflow: visible;">
+          <div class="project-details-content">
+            <article class="proj-panel booted" data-proj="gw">
+              <div class="proj-boot-bar"><div class="proj-boot-fill" style="width: 100%;"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <div class="proj-metrics">
+                    <div class="proj-metric"><span class="pm-key">FREQ_PEAK</span><span class="pm-val" id="gw-freq">35 Hz</span></div>
+                    <div class="proj-metric"><span class="pm-key">SNR</span><span class="pm-val" id="gw-snr">8.2</span></div>
+                    <div class="proj-metric"><span class="pm-key">Δt MERGER</span><span class="pm-val" id="gw-dt">+0.4 s</span></div>
+                    <div class="proj-metric"><span class="pm-key">MODEL</span><span class="pm-val">ResNet18</span></div>
+                  </div>
+                  <h4 class="proj-title" data-compile data-es="Detección de ondas gravitacionales mediante Deep Learning" data-en="Gravitational Wave Detection using Deep Learning">Detección de ondas gravitacionales mediante Deep Learning</h4>
+                  <p class="proj-sub" data-compile data-es="Análisis comparativo de arquitecturas CNN y Transformer sobre LIGO/Virgo" data-en="Comparative analysis of CNN and Transformer architectures on LIGO/Virgo">Análisis comparativo de arquitecturas CNN y Transformer sobre LIGO/Virgo</p>
+                  <p class="proj-desc" data-compile data-es="Clasificación binaria y regresión de parámetros astrofísicos sobre strain sintético y real de LIGO/Virgo. Pipeline optimizado con KerasTuner sobre GPUs Nvidia. El backend Flask maneja el preprocesamiento digital (blanqueado y bandpass) mediante GWPy, sirviendo predicciones en latencias sub-segundo." data-en="Binary classification and astrophysical parameter regression over synthetic and real LIGO/Virgo strain data. Training pipeline optimized with KerasTuner on Nvidia GPUs. Flask backend manages digital signal preprocessing (whitening and bandpass) with GWPy, serving low-latency predictions.">Clasificación binaria y regresión de parámetros astrofísicos sobre strain sintético y real de LIGO/Virgo. Pipeline optimizado con KerasTuner sobre GPUs Nvidia. El backend Flask maneja el preprocesamiento digital (blanqueado y bandpass) mediante GWPy, sirviendo predicciones en latencias sub-segundo.</p>
+                  <div class="proj-tags"><span class="proj-tag">PyTorch</span><span class="proj-tag">LALSuite</span><span class="proj-tag">Flask</span><span class="proj-tag">CUDA</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/TFG_GravitationalWaves_AI" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · strain" data-en="ch · strain">ch · strain</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 02 -->
+      <div class="project-item" data-proj="nltl" data-cat="hardware" id="p-nltl">
+        <button class="project-row" aria-expanded="false" aria-controls="content-nltl">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">02</span>
+            <span class="proj-row-name" data-es="Gravedad análoga NLTL" data-en="NLTL Analog Gravity">Gravedad análoga NLTL</span>
+            <span class="proj-row-file">NLTL_Lite</span>
+            <span class="proj-row-year">2025</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-nltl">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="nltl">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile data-es="NLTL-Lite: Gravedad análoga en un PCB" data-en="NLTL-Lite: Analog Gravity on a PCB">NLTL-Lite: Gravedad análoga en un PCB</h4>
+                  <p class="proj-sub" data-compile data-es="Implementación pasiva de cinemática relativista general ( Schwarzschild, Kerr, etc.)" data-en="Passive implementation of general relativistic kinematics (Schwarzschild, Kerr, etc.)">Implementación pasiva de cinemática relativista general ( Schwarzschild, Kerr, etc.)</p>
+                  <p class="proj-desc" data-compile data-es="Emulador de cinemática macroscópica en espacio-tiempo curvo. Circuito de RF de 37 etapas de filtrado pasivo que utiliza varactores de capacitancia variable por tensión. Permite simular de forma física la dispersión electromagnética ante horizontes de sucesos y el arrastre de sistemas rotatorios de Kerr." data-en="Macroscopic curved spacetime kinematics emulator. 37-stage passive RF filtering circuit using voltage-variable varactor diodes. Allows physical simulation of electromagnetic scattering under event horizons and Kerr frame-dragging effects.">Emulador de cinemática macroscópica en espacio-tiempo curvo. Circuito de RF de 37 etapas de filtrado pasivo que utiliza varactores de capacitancia variable por tensión. Permite simular de forma física la dispersión electromagnética ante horizontes de sucesos y el arrastre de sistemas rotatorios de Kerr.</p>
+                  <div class="proj-tags"><span class="proj-tag">KiCad</span><span class="proj-tag">SPICE</span><span class="proj-tag">Varactores</span><span class="proj-tag">DSO 1GHz</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/NLTL_Lite" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · pulse" data-en="ch · pulse">ch · pulse</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 03 -->
+      <div class="project-item" data-proj="concrete" data-cat="ai software" id="p-concrete">
+        <button class="project-row" aria-expanded="false" aria-controls="content-concrete">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">03</span>
+            <span class="proj-row-name">Concrete &amp; Silicon</span>
+            <span class="proj-row-file">concrete-and-silicon</span>
+            <span class="proj-row-year">2026</span>
+            <span class="proj-row-status wip">● <span data-es="en curso" data-en="in progress">en curso</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-concrete">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="concrete">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>Concrete &amp; Silicon</h4>
+                  <p class="proj-sub" data-compile data-es="Sandbox de agentes de IA vivos con vida interior" data-en="Sandbox of live AI agents with inner lives">Sandbox de agentes de IA vivos con vida interior</p>
+                  <p class="proj-desc" data-compile data-es="Simulación urbana interactiva de mundo abierto cyberpunk. Los agentes autónomos poseen grafos relacionales de memoria, estados emocionales dinámicos y agendas propias. La inferencia local está desacoplada en un sidecar Python, estructurando prompts estructurados mediante gramáticas GBNF estrictas sobre llama.cpp." data-en="Cyberpunk open world where each NPC autonomously thinks, feels, remembers, and decides. Distributed architecture with a Godot 4.7 2D client and a Python sidecar, querying a local llama.cpp server (native GBNF, KV-caching, and continuous batching) for offline private inference.">Simulación urbana interactiva de mundo abierto cyberpunk. Los agentes autónomos poseen grafos relacionales de memoria, estados emocionales dinámicos y agendas propias. La inferencia local está desacoplada en un sidecar Python, estructurando prompts estructurados mediante gramáticas GBNF estrictas sobre llama.cpp.</p>
+                  <div class="proj-tags"><span class="proj-tag">Godot 4.7</span><span class="proj-tag">Python</span><span class="proj-tag">Llama.cpp</span><span class="proj-tag">GGUF</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/concrete-and-silicon" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · orbit" data-en="ch · orbit">ch · orbit</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 04 -->
+      <div class="project-item" data-proj="physdeck" data-cat="software" id="p-physdeck">
+        <button class="project-row" aria-expanded="false" aria-controls="content-physdeck">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">04</span>
+            <span class="proj-row-name">PhysDeck</span>
+            <span class="proj-row-file">physdeck</span>
+            <span class="proj-row-year">2024</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-physdeck">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="physdeck">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>PhysDeck</h4>
+                  <p class="proj-sub" data-compile data-es="Laboratorio interactivo de física computacional" data-en="Interactive computational physics laboratory">Laboratorio interactivo de física computacional</p>
+                  <p class="proj-desc" data-compile data-es="Entorno gráfico unificado para simulaciones físicas. Incluye un optimizador estructural de redes cristalinas que integra redes neuronales de pre-evaluación CHGNet, un visor de topologías cuánticas de QMSolve, un generador automatizado de trayectorias de partículas atmosféricas y un graficador de diagramas de Feynman." data-en="Unified graphical workspace for physical simulations. Includes a crystalline structure optimizer integrating CHGNet neural networks, a quantum topology visualizer with QMSolve, an atmospheric particle path generator, and a custom Feynman diagram plotter.">Entorno gráfico unificado para simulaciones físicas. Incluye un optimizador estructural de redes cristalinas que integra redes neuronales de pre-evaluación CHGNet, un visor de topologías cuánticas de QMSolve, un generador automatizado de trayectorias de partículas atmosféricas y un graficador de diagramas de Feynman.</p>
+                  <div class="proj-tags"><span class="proj-tag">Python</span><span class="proj-tag">QMSolve</span><span class="proj-tag">CHGNet</span><span class="proj-tag">CORSIKA</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/physdeck" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · cascade" data-en="ch · cascade">ch · cascade</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 05 -->
+      <div class="project-item" data-proj="mineralia" data-cat="software" id="p-mineralia">
+        <button class="project-row" aria-expanded="false" aria-controls="content-mineralia">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">05</span>
+            <span class="proj-row-name" data-es="Catálogo Mineral" data-en="Mineral Catalogue">Catálogo Mineral</span>
+            <span class="proj-row-file">CatalogoMineral</span>
+            <span class="proj-row-year">2026</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-mineralia">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="mineralia">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile data-es="Catálogo Mineral" data-en="Mineral Catalogue">Catálogo Mineral</h4>
+                  <p class="proj-sub" data-compile data-es="PWA offline-first con sincronización automática" data-en="Offline-first PWA with automatic synchronization">PWA offline-first con sincronización automática</p>
+                  <p class="proj-desc" data-compile data-es="Gestor de inventario geológico offline-first. Diseñado con módulos ES nativos para optimizar el rendimiento de renderizado en navegadores móviles. Integra almacenamiento persistente en IndexedDB, service workers adaptados para el almacenamiento local de imágenes de campo, y sincronización reactiva bidireccional con Firebase." data-en="Offline-first geological inventory manager. Architected with native ES modules to optimize rendering performance on mobile browsers. Integrates persistent storage in IndexedDB, service workers configured for field-image caching, and reactive two-way sync with Firebase.">Gestor de inventario geológico offline-first. Diseñado con módulos ES nativos para optimizar el rendimiento de renderizado en navegadores móviles. Integra almacenamiento persistente en IndexedDB, service workers adaptados para el almacenamiento local de imágenes de campo, y sincronización reactiva bidireccional con Firebase.</p>
+                  <div class="mineralia-stats">
+                    <span class="min-stat"><span class="ms-ok">✔</span> offline</span>
+                    <span class="min-stat"><span class="ms-ok">✔</span> sync</span>
+                    <span class="min-stat"><span class="ms-ok">✔</span> QR card</span>
+                    <span class="min-stat"><span class="ms-ok">✔</span> PDF export</span>
+                  </div>
+                  <div class="proj-tags"><span class="proj-tag">HTML5</span><span class="proj-tag">Tailwind</span><span class="proj-tag">IndexedDB</span><span class="proj-tag">Firebase</span></div>
+                  <div class="proj-links"><a href="https://catalogomineral-4b80f.web.app/" data-es="demo" data-en="demo">demo</a><a href="https://github.com/Javitax47/CatalogoMineral" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · sync" data-en="ch · sync">ch · sync</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 06 -->
+      <div class="project-item" data-proj="soundtrack" data-cat="software" id="p-soundtrack">
+        <button class="project-row" aria-expanded="false" aria-controls="content-soundtrack">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">06</span>
+            <span class="proj-row-name">Soundtrack Showdown</span>
+            <span class="proj-row-file">soundtrack-showdown</span>
+            <span class="proj-row-year">2026</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-soundtrack">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="soundtrack">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>Soundtrack Showdown</h4>
+                  <p class="proj-sub" data-compile data-es="Comparador y tier-list de bandas sonoras por swipe" data-en="Soundtrack showdown &amp; tier list by swipe">Comparador y tier-list de bandas sonoras por swipe</p>
+                  <p class="proj-desc" data-compile data-es="Plataforma de ordenación y clasificación comparativa de bandas sonoras. Aplica el algoritmo de emparejamiento ELO para resolver rankings de forma determinista mediante elecciones directas de abanico. Cuenta con una interfaz fluida construida en React 18, control de arrastre dnd-kit, persistencia asíncrona y autenticación mediante Supabase." data-en="Comparative ranking platform for soundtracks. Implements the ELO rating system to deterministically solve tier positions via direct fan choice match-ups. Built with a fluid React 18 frontend, drag-and-drop mechanics using dnd-kit, and structured async storage with Supabase.">Plataforma de ordenación y clasificación comparativa de bandas sonoras. Aplica el algoritmo de emparejamiento ELO para resolver rankings de forma determinista mediante elecciones directas de abanico. Cuenta con una interfaz fluida construida en React 18, control de arrastre dnd-kit, persistencia asíncrona y autenticación mediante Supabase.</p>
+                  <div class="proj-tags"><span class="proj-tag">React 18</span><span class="proj-tag">TypeScript</span><span class="proj-tag">Supabase</span><span class="proj-tag">Tailwind</span></div>
+                  <div class="proj-links"><a href="https://javitax47.github.io/soundtrack-showdown/" data-es="demo" data-en="demo">demo</a><a href="https://github.com/Javitax47/soundtrack-showdown" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · ELO" data-en="ch · ELO">ch · ELO</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 07 -->
+      <div class="project-item" data-proj="solver" data-cat="ai software" id="p-solver">
+        <button class="project-row" aria-expanded="false" aria-controls="content-solver">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">07</span>
+            <span class="proj-row-name" data-es="Solver de métricas" data-en="Metric solver">Solver de métricas</span>
+            <span class="proj-row-file">metric-solver.ipynb</span>
+            <span class="proj-row-year">2025</span>
+            <span class="proj-row-status res">● <span data-es="investigación" data-en="research">investigación</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-solver">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="solver">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile data-es="Solver de métricas" data-en="Metric solver">Solver de métricas</h4>
+                  <p class="proj-sub" data-compile data-es="Cálculo tensorial simbólico para Relatividad General" data-en="Symbolic tensor calculus for General Relativity">Cálculo tensorial simbólico para Relatividad General</p>
+                  <p class="proj-desc" data-compile data-es="Herramienta analítica de relatividad general. Resuelve de forma computacional las componentes del tensor métrico arbitrario de entrada para calcular simbólicamente los símbolos de Christoffel, la curvatura escalar de Ricci, el tensor de Riemann de rango 4 y el tensor de Einstein, agilizando el estudio de nuevas métricas físicas." data-en="General relativity analytical tool. Computationally solves arbitrary input metric tensors to symbolically derive Christoffel symbols, Ricci scalar curvature, the rank-4 Riemann tensor, and the Einstein tensor, accelerating the study of new physical metrics.">Herramienta analítica de relatividad general. Resuelve de forma computacional las componentes del tensor métrico arbitrario de entrada para calcular simbólicamente los símbolos de Christoffel, la curvatura escalar de Ricci, el tensor de Riemann de rango 4 y el tensor de Einstein, agilizando el estudio de nuevas métricas físicas.</p>
+                  <div class="proj-tags"><span class="proj-tag">SymPy</span><span class="proj-tag">NumPy</span><span class="proj-tag">Colab</span><span class="proj-tag">Jupyter</span></div>
+                  <div class="proj-links"><a href="https://colab.research.google.com/drive/1KyLGqXPdBroHRa95kk72JICYbfS38WaS?usp=sharing" data-es="abrir notebook" data-en="open notebook">abrir notebook</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · tensor" data-en="ch · tensor">ch · tensor</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 08 -->
+      <div class="project-item" data-proj="trappist" data-cat="ai software" id="p-trappist">
+        <button class="project-row" aria-expanded="false" aria-controls="content-trappist">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">08</span>
+            <span class="proj-row-name">TRAPPIST-1_Mission</span>
+            <span class="proj-row-file">legacy.py</span>
+            <span class="proj-row-year">2025</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-trappist">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="trappist">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>TRAPPIST-1_Mission</h4>
+                  <p class="proj-sub" data-compile data-es="Optimización celeste de trayectorias orbitales" data-en="Celestial orbital trajectory optimization">Optimización celeste de trayectorias orbitales</p>
+                  <p class="proj-desc" data-compile data-es="Optimizador evolutivo de transferencia interplanetaria de energía mínima. Integra un algoritmo genético de optimización multiobjetivo con selección elitista (NSGA-II) que evalúa trayectorias balísticas y ventanas de lanzamiento de mínima delta-V, validando la estabilidad en sistemas solares compactos multiplanetarios." data-en="Multi-objective evolutionary interplanetary trajectory optimizer. Integrates an elitist genetic algorithm (NSGA-II) to solve multi-variable launch windows and minimum-delta-V orbits, evaluating flight stability inside compact multiplanetary solar systems.">Optimizador evolutivo de transferencia interplanetaria de energía mínima. Integra un algoritmo genético de optimización multiobjetivo con selección elitista (NSGA-II) que evalúa trayectorias balísticas y ventanas de lanzamiento de mínima delta-V, validando la estabilidad en sistemas solares compactos multiplanetarios.</p>
+                  <div class="proj-tags"><span class="proj-tag">Python</span><span class="proj-tag">DEAP</span><span class="proj-tag">SciPy</span><span class="proj-tag">Mecánica Celeste</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/TRAPPIST-1_Mission" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · orbit" data-en="ch · orbit">ch · orbit</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 09 -->
+      <div class="project-item" data-proj="environ" data-cat="hardware software" id="p-environ">
+        <button class="project-row" aria-expanded="false" aria-controls="content-environ">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">09</span>
+            <span class="proj-row-name">EnvironHealth</span>
+            <span class="proj-row-file">EnvironHealth</span>
+            <span class="proj-row-year">2024</span>
+            <span class="proj-row-status ok">● <span data-es="completado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-environ">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="environ">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>EnvironHealth</h4>
+                  <p class="proj-sub" data-compile data-es="Crowdsensing de calidad de aire con sensor móvil" data-en="Distributed crowdsensing air quality system">Crowdsensing de calidad de aire con sensor móvil</p>
+                  <p class="proj-desc" data-compile data-es="Plataforma IoT móvil y distribuida de crowdsensing medioambiental. Los nodos portátiles de sensado de Ozono transmiten datos via Bluetooth LE a una aplicación móvil Android nativa en Kotlin, la cual centraliza el geoposicionamiento y sincroniza con servidores centrales para procesar mapas de polución espacial en ArcGIS." data-en="Distributed mobile IoT environmental crowdsensing platform. Portable Ozone-sensing hardware nodes stream metrics via Bluetooth LE to a native Kotlin Android application, which aggregates geolocation and syncs to a backend for GIS interpolation in ArcGIS.">Plataforma IoT móvil y distribuida de crowdsensing medioambiental. Los nodos portátiles de sensado de Ozono transmiten datos via Bluetooth LE a una aplicación móvil Android nativa en Kotlin, la cual centraliza el geoposicionamiento y sincroniza con servidores centrales para procesar mapas de polución espacial en ArcGIS.</p>
+                  <div class="proj-tags"><span class="proj-tag">Kotlin</span><span class="proj-tag">Arduino</span><span class="proj-tag">Bluetooth LE</span><span class="proj-tag">ArcGIS</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/EnvironHealth" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · crowdsense" data-en="ch · crowdsensing">ch · crowdsensing</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 10 -->
+      <div class="project-item" data-proj="mev" data-cat="software" id="p-mev">
+        <button class="project-row" aria-expanded="false" aria-controls="content-mev">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">10</span>
+            <span class="proj-row-name">MEV-Bot Base L2</span>
+            <span class="proj-row-file">mev_bot_wss.py</span>
+            <span class="proj-row-year">2026</span>
+            <span class="proj-row-status ok">● <span data-es="finalizado" data-en="done">completado</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-mev">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="mev">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>MEV-Bot Base L2</h4>
+                  <p class="proj-sub" data-compile data-es="Motor de arbitraje atómico en blockchain" data-en="Atomic DEX Arbitrage Engine on Base L2">Motor de arbitraje atómico en blockchain</p>
+                  <p class="proj-desc" data-compile data-es="Motor autónomo de arbitraje atómico multihop y multi-pool en redes L2. Analiza de manera asíncrona el flujo de liquidez mediante un resolutor de ciclos negativos de Bellman-Ford sobre pools de Uniswap y Aerodrome, ejecutando llamadas sin riesgo mediante balancines de flash loans y transacciones atómicas agrupadas." data-en="Autonomous multi-pool and multihop atomic arbitrage engine in L2 networks. Asynchronously monitors pool liquidity using a Bellman-Ford negative cycle solver over Uniswap and Aerodrome, executing risk-free routes via flash loan balancers and bundled atomic transactions.">Motor autónomo de arbitraje atómico multihop y multi-pool en redes L2. Analiza de manera asíncrona el flujo de liquidez mediante un resolutor de ciclos negativos de Bellman-Ford sobre pools de Uniswap y Aerodrome, ejecutando llamadas sin riesgo mediante balancines de flash loans y transacciones atómicas agrupadas.</p>
+                  <div class="proj-tags"><span class="proj-tag">Solidity</span><span class="proj-tag">Web3.py</span><span class="proj-tag">asyncio</span><span class="proj-tag">Base L2</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/MEV-Bot" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · arb" data-en="ch · arb">ch · arb</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROYECTO 11 -->
+      <div class="project-item" data-proj="diophantus" data-cat="ai software" id="p-diophantus">
+        <button class="project-row" aria-expanded="false" aria-controls="content-diophantus">
+          <span class="proj-chevron">›</span>
+          <div class="proj-row-grid">
+            <span class="proj-row-num">11</span>
+            <span class="proj-row-name">Diophantus</span>
+            <span class="proj-row-file">diophantus-compiler.rs</span>
+            <span class="proj-row-year">2026</span>
+            <span class="proj-row-status res">● <span data-es="investigación" data-en="research">investigación</span></span>
+          </div>
+        </button>
+        <div class="project-details-wrap" id="content-diophantus">
+          <div class="project-details-content">
+            <article class="proj-panel" data-proj="diophantus">
+              <div class="proj-boot-bar"><div class="proj-boot-fill"></div></div>
+              <div class="proj-body">
+                <div class="proj-vis"></div>
+                <div class="proj-meta">
+                  <h4 class="proj-title" data-compile>Proyecto Diophantus</h4>
+                  <p class="proj-sub" data-compile data-es="Compilador constructivo del teorema MRDP" data-en="Constructive transpiler of MRDP theorem">Compilador constructivo del teorema MRDP</p>
+                  <p class="proj-desc" data-compile data-es="Herramienta experimental de compilación constructiva y análisis estático. Traduce bloques imperativos a polinomios de coeficientes enteros correspondientes bajo el teorema MRDP. Dispone de un motor de conjeturas matemáticas mediante fracciones continuas y análisis formal de inalcanzabilidad utilizando lógica SMT con Z3." data-en="Experimental research compiler and static analysis suite. Transpiles imperative algorithms into equivalent integer polynomials under the MRDP theorem. Features a Ramanujan-inspired continuous fraction conjecture engine and static reachability audits via Z3 SMT logic.">Herramienta experimental de compilación constructiva y análisis estático. Traduce bloques imperativos a polinomios de coeficientes enteros correspondientes bajo el teorema MRDP. Dispone de un motor de conjeturas matemáticas mediante fracciones continuas y análisis formal de inalcanzabilidad utilizando lógica SMT con Z3.</p>
+                  <div class="proj-tags"><span class="proj-tag">Rust</span><span class="proj-tag">Z3 SMT</span><span class="proj-tag">SymPy</span><span class="proj-tag">MRDP</span></div>
+                  <div class="proj-links"><a href="https://github.com/Javitax47/Proyecto-Diophantus" data-es="repositorio" data-en="repository">repositorio</a></div>
+                </div>
+              </div>
+              <div class="proj-telemetry">
+                <span class="vis-channel" data-es="ch · mrdp" data-en="ch · mrdp">ch · mrdp</span>
+                <canvas class="proj-canvas"></canvas>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TRAYECTORIA -->
+  <section id="log" class="ch">
+    <p class="ch-label" data-compile data-compile-dur="280" data-es="TRAYECTORIA" data-en="CAREER">TRAYECTORIA</p>
+    <div class="gitlog">
+      <div class="commit">
+        <div class="hash">a4f1c2e</div>
+        <div>
+          <div class="sub"><em data-compile data-compile-dur="240" data-es="Erasmus+" data-en="Erasmus+">Erasmus+</em> — <span data-es="TU Graz &amp; Uni Graz" data-en="TU Graz &amp; Uni Graz">TU Graz &amp; Uni Graz</span></div>
+          <div class="who">Feb–Jun 2025 · Graz, AT</div>
+          <div class="body" data-es="Estancia internacional en inteligencia computacional y física técnica. Origen del proyecto <strong>TRAPPIST-1</strong> y del motor de optimización Legacy. Certificación A1 en alemán." data-en="International stay in computational intelligence and technical physics. Birth of <strong>TRAPPIST-1</strong> and the Legacy optimisation engine. A1 German certification.">
+            Estancia internacional en inteligencia computacional y física técnica. Origen del proyecto <strong>TRAPPIST-1</strong> y del motor de optimización Legacy. Certificación A1 en alemán.
+          </div>
+        </div>
+      </div>
+      <div class="commit">
+        <div class="hash">c9b2dd4</div>
+        <div>
+          <div class="sub"><em data-compile data-compile-dur="240" data-es="Grado en Tecnologías Interactivas" data-en="BSc Interactive Technologies">Grado en Tecnologías Interactivas</em></div>
+          <div class="who">2022–2027 · UPV, Gandia</div>
+          <div class="body" data-es="Especialización full-stack y producto interactivo. <strong>Matrícula de Honor</strong> en Programación 1." data-en="Full-stack and interactive product specialisation. <strong>Distinction</strong> in Programming 1.">
+            Especialización full-stack y producto interactivo. <strong>Matrícula de Honor</strong> en Programación 1.
+          </div>
+        </div>
+      </div>
+      <div class="commit">
+        <div class="hash">1ff8a07</div>
+        <div>
+          <div class="sub"><em data-compile data-compile-dur="240" data-es="Bachillerato Científico" data-en="Scientific Baccalaureate">Bachillerato Científico</em></div>
+          <div class="who">2020–2022 · IES Tirant lo Blanc</div>
+          <div class="body" data-es="Fundamentos en matemáticas, física y química. Primer contacto con la programación." data-en="Foundations in mathematics, physics and chemistry. First contact with programming.">
+            Fundamentos en matemáticas, física y química. Primer contacto con la programación.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACTO -->
+  <section id="contact" class="ch">
+    <p class="ch-label" data-compile data-compile-dur="280" data-es="CONTACTO" data-en="CONTACT">CONTACTO</p>
+    <div class="contact-box">
+      <h2><em data-compile data-compile-dur="340" data-es="Hablemos." data-en="Let's talk.">Hablemos.</em></h2>
+      <p class="lead" data-es="Si algo de lo anterior genera una <strong>conversación pendiente</strong>, escríbeme. Devuelvo casi todos los mensajes en menos de 24 h." data-en="If any of this triggered a <strong>conversation worth having</strong>, drop me a line. I reply to almost every message within 24h.">
+        Si algo de lo anterior genera una <strong>conversación pendiente</strong>, escríbeme. Devuelvo casi todos los mensajes en menos de 24 h.
+      </p>
+      <div class="contact-links">
+        <a href="mailto:camarenacuartero@gmail.com"><span class="lbl">Email</span><span class="val">camarenacuartero@gmail.com</span></a>
+        <a href="https://github.com/Javitax47"><span class="lbl">GitHub</span><span class="val">@Javitax47</span></a>
+        <a href="https://www.linkedin.com/in/TU-PERFIL" target="_blank" rel="noopener"><span class="lbl">LinkedIn</span><span class="val">Javier Camarena</span></a>
+        <a href="javier-cv.pdf"><span class="lbl">CV</span><span class="val" data-es="Descargar PDF" data-en="Download PDF">Descargar PDF</span></a>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /.shell -->
+
+<footer class="foot">
+  <div><span class="pulse"></span><span data-es="11 proyectos · 0 errores" data-en="11 projects · 0 errors">11 proyectos · 0 errores</span></div>
+  <div> · © Javier 2026</div>
+</footer>
+
+<script defer src="js/boot.js"></script>
+<script defer src="js/bg-engine.js"></script>
+<script defer src="js/media-manifest.js"></script>
+<script defer src="js/media-mosaic.js"></script>
+<script defer src="js/ui.js"></script>
+</body>
+</html>
