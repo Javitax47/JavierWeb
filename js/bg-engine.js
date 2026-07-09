@@ -24,7 +24,7 @@ let _pageSnapshot = null;
 let _diffOriginalCanonical = null;
 let _editEntryText = null;
 
-/* ─── lang / theme ─── */
+/* lang / theme */
 function setLang(l) {
   _diffOriginalCanonical = null;
   document.documentElement.dataset.lang = l;
@@ -135,11 +135,9 @@ function renderBg() {
   if (_editing) return;
   if (renderBg._scheduled) return;
   renderBg._scheduled = true;
-  console.log('[renderBg] scheduled');
   const run = () => {
     renderBg._scheduled = false;
     if (_editing) return;
-    console.group('%c[renderBg] ─── REBUILDING BG FROM PAGE DOM ───', 'color:#9ec6ee;font-weight:bold');
     _anchorEls = [];
     const frag = document.createDocumentFragment();
     for (const node of page.childNodes) {
@@ -150,8 +148,6 @@ function renderBg() {
     indexTags();
     computeAnchors();
     kickBg();
-    console.log('[renderBg] done — .tk:', bg.querySelectorAll('.tk').length, '.x:', bg.querySelectorAll('.x').length);
-    console.groupEnd();
   };
   if (typeof requestIdleCallback === 'function') {
     requestIdleCallback(run, { timeout: 120 });
@@ -161,7 +157,7 @@ function renderBg() {
 }
 renderBg._scheduled = false;
 
-/* ─── indexing ─── */
+/* indexing */
 let NODES = [], GA = [], GB = [];
 function tagKind(tk) {
   const t0 = tk.querySelector('.t');
@@ -173,7 +169,6 @@ function tagKind(tk) {
 function indexTags() {
   NODES = [...bg.querySelectorAll('.tk, .x, .c')];
   const n = NODES.length;
-  console.log('[indexTags] indexing', n, 'nodes');
   GA = new Array(n); GB = new Array(n);
   const close = new Array(n), kind = new Array(n), stack = [];
   NODES.forEach((el, i) => {
@@ -195,7 +190,7 @@ function indexTags() {
   }
 }
 
-/* ─── lighting ─── */
+/* lighting */
 let _hoverEl = null;
 function clearLit() {
   bg.querySelectorAll('.tag-lit').forEach(s => s.classList.remove('tag-lit'));
@@ -210,18 +205,11 @@ function litGroup(el) {
 function litOne(el) {
   if (!el || !el.classList) return;
   const TOKEN_CLASSES = ['x', 'tk', 'c', 'v', 't', 'n', 'a'];
-  if (!TOKEN_CLASSES.some(c => el.classList.contains(c))) {
-    if (!litOne._rejectCount) litOne._rejectCount = 0;
-    litOne._rejectCount++;
-    if (litOne._rejectCount <= 5 || litOne._rejectCount % 20 === 0) {
-      console.warn('[litOne] rejected element:', el.tagName, el.className);
-    }
-    return;
-  }
+  if (!TOKEN_CLASSES.some(c => el.classList.contains(c))) { return; }
   el.classList.add('tag-lit');
 }
 
-/* ─── parallax ─── */
+/* parallax */
 let _anchors = [], _anchorEls = [], _bgTarget = 0, _bgCur = 0, _bgRAF = 0, _bgMax = 1;
 
 function computeAnchors() {
@@ -279,33 +267,25 @@ window.addEventListener('resize', () => {
   _resizeT = setTimeout(() => { computeAnchors(); kickBg(); }, 100);
 });
 
-/* ─── hover ─── */
+/* hover */
 function bgXNear(cx, cy) {
   const R = 18;
   const pts = [[0, 0], [0, -R], [0, R], [-R, 0], [R, 0], [-R, -R], [R, -R], [-R, R], [R, R]];
   let best = null, bestD = Infinity;
   const lh = parseFloat(getComputedStyle(bg).lineHeight) || 20;
-  let _dbgChecked = 0, _dbgRejected = 0, _dbgNoX = 0;
   for (const [dx, dy] of pts) {
     const els = document.elementsFromPoint(cx + dx, cy + dy);
     for (const el of els) {
       if (el.classList && (el.classList.contains('x') || el.classList.contains('c')) && bg.contains(el)) {
-        _dbgChecked++;
         const isComment = el.classList.contains('c');
         const rects = el.getClientRects();
-        if (!isComment && rects.length > 4) { _dbgRejected++; break; }
-        if (!isComment && el.getBoundingClientRect().height > lh * 3) { _dbgRejected++; break; }
+        if (!isComment && rects.length > 4) { break; }
+        if (!isComment && el.getBoundingClientRect().height > lh * 3) { break; }
         const d = dx * dx + dy * dy;
         if (d < bestD) { bestD = d; best = el; }
         break;
       }
     }
-    if (!best && els.length > 0) _dbgNoX++;
-  }
-  if (!bgXNear._counter) bgXNear._counter = 0;
-  bgXNear._counter++;
-  if (bgXNear._counter % 60 === 1) {
-    console.log('[bgXNear] sample — checked:', _dbgChecked, 'rejected:', _dbgRejected, 'noX:', _dbgNoX, 'found:', !!best);
   }
   return best;
 }
@@ -359,7 +339,7 @@ document.addEventListener('selectionchange', () => {
   }
 });
 
-/*  DIFF  */
+/* diff */
 const BLOCK = 'a[href], button, input, textarea, select, .slot, .slot *, .lang, .lang *, .theme, .theme *, .badge-open, #ac, #ac *, footer.foot a, #hud-scroll-track, #hud-scroll-track *';
 
 function normalizeForDiff(line) {
@@ -416,14 +396,12 @@ function renderDiff() {
   let adds = 0, dels = 0;
   diff.forEach(d => { if (d.type === 'add') adds++; if (d.type === 'del') dels++; });
   _hasDiff = adds > 0 || dels > 0;
-  console.log('[renderDiff] live diff: +' + adds + ' -' + dels);
   updateDiffStatus(adds, dels);
 }
 
 function diffBaselineCanonical() {
-  if (_diffOriginalCanonical) { console.log('[diffBaselineCanonical] returning cached'); return _diffOriginalCanonical; }
+  if (_diffOriginalCanonical) { return _diffOriginalCanonical; }
   if (!_diffOriginal) return null;
-  console.log('[diffBaselineCanonical] computing canonical');
   try {
     const text = _diffOriginal.join('\n');
     const doc = new DOMParser().parseFromString('<div id="__r">' + text + '</div>', 'text/html');
@@ -450,7 +428,6 @@ function diffBaselineCanonical() {
     const probe = document.createElement('pre');
     probe.appendChild(tmp);
     _diffOriginalCanonical = probe.textContent.split('\n');
-    console.log('[diffBaselineCanonical] computed canonical lines:', _diffOriginalCanonical.length);
     return _diffOriginalCanonical;
   } catch (e) {
     return _diffOriginal;
@@ -458,8 +435,7 @@ function diffBaselineCanonical() {
 }
 
 function renderDiffPersist() {
-  console.group('%c[renderDiffPersist] ─── BUILDING DIFF OVERLAY ───', 'color:#e8b87a;font-weight:bold');
-  if (!_diffOriginal) { console.log('ABORT: no _diffOriginal'); console.groupEnd(); return; }
+  if (!_diffOriginal) { return; }
 
   _anchorEls = [];
   const tmp = document.createDocumentFragment();
@@ -487,11 +463,9 @@ function renderDiffPersist() {
   const baseline = diffBaselineCanonical() || _diffOriginal;
   const _bn = normalizeLinesForDiff(baseline);
   const _nn = normalizeLinesForDiff(newRowText);
-  console.log('[renderDiffPersist] baseline lines:', baseline.length, 'newRowText lines:', newRowText.length);
   const diff = computeLineDiff(_bn, _nn);
   let adds = 0, dels = 0;
   diff.forEach(d => { if (d.type === 'add') adds++; if (d.type === 'del') dels++; });
-  console.log('[renderDiffPersist] diff result: +' + adds + ' -' + dels);
 
   _lastEditedText = newRowText.join('\n');
 
@@ -502,7 +476,6 @@ function renderDiffPersist() {
     bg.replaceChildren(plain);
     indexTags(); computeAnchors(); kickBg();
     updateDiffStatus(0, 0);
-    console.groupEnd();
     return;
   }
   _hasDiff = true;
@@ -535,8 +508,6 @@ function renderDiffPersist() {
   bg.replaceChildren(out);
   indexTags(); computeAnchors(); kickBg();
   updateDiffStatus(adds, dels);
-  console.log('[renderDiffPersist] DONE — .diff-line:', bg.querySelectorAll('.diff-line').length);
-  console.groupEnd();
 }
 
 function tokenizeLine(text) {
@@ -619,10 +590,9 @@ function clearDiff(full) {
   stTxt.textContent = lang === 'en' ? 'no changes' : 'sin cambios';
 }
 
-/* ─── EDIT MODE ─── */
+/* edit mode */
 function enterEdit(cx, cy) {
   if (IS_TOUCH || _editing) return;
-  console.group('%c[enterEdit] ─── ENTERING EDIT MODE ───', 'color:#7adfc8;font-weight:bold');
   let targetLineIdx = -1;
   let hit = null;
   if (_hasDiff && _lastEditedText && cx != null) {
@@ -684,10 +654,8 @@ function enterEdit(cx, cy) {
 
   if (!_diffOriginal) {
     _diffOriginal = bg.textContent.split('\n');
-    console.warn('[enterEdit] *** _diffOriginal CAPTURED ***');
   }
   _editEntryText = bg.textContent;
-  console.groupEnd();
 
   if (targetLineIdx >= 0) {
     requestAnimationFrame(() => {
@@ -763,7 +731,7 @@ function enterEdit(cx, cy) {
         }
         if (!range) { range = document.createRange(); range.selectNodeContents(bg); range.collapse(false); }
         const s = window.getSelection(); s.removeAllRanges(); s.addRange(range);
-      } catch (e) { console.error('[enterEdit] caret placement failed:', e); }
+      } catch (e) { }
     });
   }
   renderDiff();
@@ -771,7 +739,6 @@ function enterEdit(cx, cy) {
 
 function exitEdit() {
   if (!_editing) return;
-  console.group('%c[exitEdit] ─── EXITING EDIT MODE ───', 'color:#ff6e7e;font-weight:bold');
   _editing = false;
   document.body.classList.remove('in-edit');
   clearLit();
@@ -793,9 +760,9 @@ function exitEdit() {
       const diff = computeLineDiff(normalizeLinesForDiff(baseline), normalizeLinesForDiff(lines));
       let adds = 0, dels = 0;
       diff.forEach(d => { if (d.type === 'add') adds++; if (d.type === 'del') dels++; });
-      if (adds || dels) { _hasDiff = true; renderDiffPersist(); console.groupEnd(); return; }
+      if (adds || dels) { _hasDiff = true; renderDiffPersist(); return; }
     }
-    _hasDiff = false; clearDiff(false); console.groupEnd(); return;
+    _hasDiff = false; clearDiff(false); return;
   }
 
   const valid = tryApply();
@@ -833,7 +800,6 @@ function exitEdit() {
       if (!_hasDiff) stTxt.textContent = lang === 'en' ? 'no changes' : 'sin cambios';
     }, 1200);
   }
-  console.groupEnd();
 }
 
 function clickIsCodeSurface(e) {
@@ -902,7 +868,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ─── live apply ─── */
+/* live apply */
 function setStatus(st, msg) {
   stEl.classList.toggle('err', st === 'err');
   stTxt.textContent = msg || (st === 'err' ? 'error' : 'ok');
@@ -1101,7 +1067,7 @@ bg.addEventListener('input', () => {
   _diffTimer = setTimeout(renderDiff, 450);
 });
 
-/* ─── autocomplete ─── */
+/* autocomplete */
 const AC_TAGS = ['h1', 'h2', 'h3', 'h4', 'p', 'span', 'em', 'strong', 'a', 'div', 'section', 'article', 'small', 'mark', 'figure', 'time'];
 let acClasses = [];
 let acState = null;
@@ -1221,7 +1187,7 @@ bg.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); exitEdit(); }
 });
 
-/* ─── hover link ─── */
+/* hover link */
 function wireLinking() {
   page.addEventListener('mouseover', e => {
     const el = e.target.closest('[data-ref]');
@@ -1237,7 +1203,7 @@ function wireLinking() {
   });
 }
 
-/* ─── DOMContentLoaded init ─── */
+/* DOMContentLoaded init */
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const l = localStorage.getItem('lang-d'); if (l === 'en') setLang('en');
@@ -1249,40 +1215,9 @@ window.addEventListener('DOMContentLoaded', () => {
   wireLinking();
   stEl.addEventListener('dblclick', () => { if (_hasDiff && !_editing) { clearDiff(true); renderBg(); } });
 
-  // Debug helpers
-  let _mutationCount = 0, _mutationSamples = [];
-  const _pageMO = new MutationObserver(records => {
-    _mutationCount += records.length;
-    if (_mutationSamples.length < 50) {
-      records.slice(0, 5).forEach(r => {
-        const tgt = r.target;
-        let descr = '';
-        if (r.type === 'characterData') descr = 'text in <' + (tgt.parentElement ? tgt.parentElement.tagName.toLowerCase() : '?') + '>';
-        else if (r.type === 'attributes') descr = '@' + r.attributeName + ' on <' + tgt.tagName.toLowerCase() + '>';
-        else if (r.type === 'childList') descr = 'children of <' + (tgt.tagName ? tgt.tagName.toLowerCase() : '?') + '> (+' + r.addedNodes.length + ', -' + r.removedNodes.length + ')';
-        _mutationSamples.push(r.type + ': ' + descr);
-      });
-    }
-  });
-  _pageMO.observe(page, { childList: true, subtree: true, attributes: true, characterData: true });
-  window._dbgMutations = function (reset) {
-    console.group('%c[MUTATIONS]', 'color:#ff90a8;font-weight:bold');
-    console.log('total:', _mutationCount);
-    _mutationSamples.forEach(s => console.log('  ' + s));
-    if (reset) { _mutationCount = 0; _mutationSamples = []; }
-    console.groupEnd();
-  };
-  window._debugState = function () {
-    console.group('%c[DEBUG STATE]', 'color:#ffb547;font-weight:bold');
-    console.log('_editing:', _editing, '_hasDiff:', _hasDiff);
-    console.log('_diffOriginal:', _diffOriginal ? '(lines=' + _diffOriginal.length + ')' : null);
-    console.log('bg .tk:', bg.querySelectorAll('.tk').length, '.x:', bg.querySelectorAll('.x').length);
-    console.groupEnd();
-  };
-
   setTimeout(() => { document.getElementById('hint')?.animate([{ opacity: .3 }, { opacity: 1 }, { opacity: .3 }], { duration: 2000, iterations: 2 }); }, 3000);
 
-  /* ═══ BOOT SEQUENCE ═══ */
+  /* boot sequence */
   (function runBoot() {
     const overlay = document.getElementById('boot-overlay');
     let heroKicked = false;

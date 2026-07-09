@@ -1,7 +1,4 @@
-﻿/* =============================================================
-   source.css — Javier Portfolio
-   Extracted from direccion-d-source.html
-   ============================================================= */
+﻿/* source.css — Javier Portfolio */
 
 *,
 *::before,
@@ -147,7 +144,7 @@ a {
   text-decoration: none;
 }
 
-/* ══ BACKGROUND ══ */
+/* background */
 #bg-viewport {
   position: fixed;
   inset: 0;
@@ -422,7 +419,7 @@ body.in-edit #bg-code :where(.t, .n, .a, .v, .c, .x) {
   mix-blend-mode: multiply;
 }
 
-/* ══ FOREGROUND ══ */
+/* foreground */
 .shell {
   position: relative;
   z-index: 3;
@@ -1309,7 +1306,7 @@ body.in-edit #ac {
   background: rgba(220, 213, 196, .96);
 }
 
-/* ══ DIFF INLINE ══ */
+/* diff inline */
 #bg-code .diff-line {
   position: relative;
   display: block;
@@ -1516,7 +1513,7 @@ body.in-edit #ac {
   }
 }
 
-/* ══ BOOT OVERLAY ══ */
+/* boot overlay */
 .skip-boot #boot-overlay {
   display: none !important;
 }
@@ -1800,7 +1797,7 @@ body.in-edit #ac {
   }
 }
 
-/* ══ HERO IMPROVEMENTS ══ */
+/* hero */
 .hero-prompt {
   font-family: var(--mono);
   font-size: 12.5px;
@@ -1842,7 +1839,7 @@ body.in-edit #ac {
   display: block;
 }
 
-/* ══ COMPILE-TEXT ══ */
+/* compile-text */
 [data-compile] {
   opacity: 0;
 }
@@ -1851,7 +1848,7 @@ body.in-edit #ac {
   opacity: 1;
 }
 
-/* ══ PROJECT PANELS ══ */
+/* project panels */
 .proj-panels {
   display: flex;
   flex-direction: column;
@@ -1975,9 +1972,7 @@ body.in-edit #ac {
   z-index: 4;
 }
 
-/* ══ MEDIA MOSAIC (Focus-Drift) — base/desktop ══ */
-/* Mosaico: rejilla densa organica que cubre por completo el area visual.
-   Se superpone al .proj-media estatico (fallback de mejora progresiva). */
+/* media mosaic (focus-drift) — base/desktop, se superpone al .proj-media estatico (fallback) */
 .proj-mosaic {
   position: absolute;
   inset: 0;
@@ -2009,13 +2004,7 @@ body.in-edit #ac {
   will-change: transform, opacity;
 }
 
-/* Envuelve medio + badge (ver buildMosaic en media-mosaic.js) para que
-   compartan la misma caja: por defecto llena el tile igual que antes de
-   existir este envoltorio (el medio sigue llenando el 100% de ESTO, que a
-   su vez llena el 100% del tile). Solo cambia de forma al enfocarse en
-   escritorio (ver @media abajo), donde se encoge a la relacion de aspecto
-   real del medio y el badge (absolute dentro de este contenedor) se mueve
-   con el. */
+/* envuelve medio + badge para que compartan caja; se encoge al aspect-ratio real solo al enfocar en escritorio (ver @media abajo) */
 .mosaic-tile .mosaic-frame {
   display: block;
   position: relative;
@@ -2036,25 +2025,16 @@ body.in-edit #ac {
   opacity: 1;
 }
 
-/* Piezas en estado neutro (sin hover activo): todas iguales, sin expansion ni
-   atenuacion. Es el estado por defecto al cargar; el foco solo aparece al hacer
-   hover o al activarse el ciclo automatico. */
+/* estado por defecto al cargar: todas las piezas iguales, sin foco hasta hover/ciclo auto */
 .mosaic-tile.is-neutral {
   opacity: 1;
   filter: none;
   transform: none;
 }
 
-/* Pieza enfocada: se ELEVA por compositor (sin reflow) y cancela su jitter
-   (rotate/translate de reposo) para no acumularse con el escalado. La caja
-   de la Pieza (grid item) NUNCA cambia de tamaño/posicion propios. El
-   ESCALADO real vive en .mosaic-frame (ver @media abajo), no aqui: asi el
-   transform-origin puede anclarse al borde/esquina del MEDIO+BADGE juntos
-   (no de la celda, que puede ser mas grande que el medio si su aspect-ratio
-   no la llena) y crecer hacia el centro del mosaico sin salirse por el
-   borde que toca. La escala en si viene de --focus-scale (inyectada por JS
-   desde media-manifest.js: item.scale si el proyecto lo declara, si no el
-   fallback por area de celda), NUNCA se recalcula aqui. */
+/* la celda (grid item) nunca cambia de tamaño/posicion; el escalado real
+   vive en .mosaic-frame para poder anclar el transform-origin al borde del
+   medio+badge, no al de la celda (--focus-scale lo inyecta JS) */
 .mosaic-tile.is-focus {
   z-index: 5;
   transform: none;
@@ -2067,31 +2047,14 @@ body.in-edit #ac {
   transform: none;
 }
 
-/* En escritorio la Pieza enfocada NUNCA cambia su propio tamaño/posicion:
-   quien encoge/crece es .mosaic-frame dentro de esa caja estable.
-   width/height:auto lo ajustan a la relacion de aspecto real del medio (en
-   vez de llenar el 100%x100% y dejar hueco transparente), flex lo centra, y
-   el escalado (transform:scale) va TAMBIEN aqui, con transform-origin
-   anclado al borde/esquina del propio frame (--focus-origin, calculado por
-   JS segun que lado de su celda toca el borde del mosaico 6x6) para que
-   crezca hacia el centro del mosaico en vez de salirse por ese borde.
-   Anclar en el frame (no en la celda) importa: si el aspect-ratio del medio
-   no llena la celda, el borde de la CELDA no coincide con el borde del
-   frame, y anclar ahi lo desplazaba de su sitio al crecer. El badge vive
-   DENTRO del frame (ver buildMosaic), asi que crece/se mueve con el medio
-   en vez de quedarse anclado a la esquina de la celda. object-fit:contain
-   en el medio queda como red de seguridad si el navegador no pudiera
-   resolver el aspect intrinseco. La sombra va en el medio (drop-shadow, no
-   box-shadow en el tile) porque sigue el contorno de los pixeles PINTADOS,
-   no una caja que ya no existe como tal. */
+/* en escritorio quien encoge/crece es .mosaic-frame, no la celda; se ancla
+   ahi (no en la celda) porque si el aspect-ratio del medio no llena la
+   celda sus bordes no coinciden, y anclar en la celda lo desplazaba al
+   crecer. sombra via drop-shadow en el medio: sigue el contorno pintado */
 @media (min-width: 901px) {
   .mosaic-tile.is-focus {
     display: flex;
-    /* flex-start/flex-end en el eje que toca un borde del mosaico (en vez de
-       siempre 'center'): pega el frame a ESE borde antes de escalar, para
-       que no quede el hueco del letterboxing entre el borde tocante y el
-       borde real. --focus-justify/--focus-align los calcula JS junto con
-       --focus-origin (mismo criterio de que lado toca). */
+    /* pega el frame al borde que toca antes de escalar, sin --focus-justify/align quedaria hueco de letterbox */
     align-items: var(--focus-align, center);
     justify-content: var(--focus-justify, center);
   }
@@ -2101,11 +2064,7 @@ body.in-edit #ac {
     height: auto;
     max-width: 100%;
     max-height: 100%;
-    /* aspect-ratio = forma real del medio (la fija JS via --media-ar al conocer
-       el tamaño natural). Con max-width/height:100% el navegador encaja esa caja
-       DENTRO de la celda sin deformarla; asi el marco toma la forma del medio y
-       lo contiene sin letterbox ni desborde. Sin --media-ar (medio aun sin
-       cargar) queda 'auto' y aplica el reparto por defecto de mas abajo. */
+    /* --media-ar (JS, tamaño natural) + max-width/height:100% encaja el marco dentro de la celda sin deformar */
     aspect-ratio: var(--media-ar, auto);
     transform-origin: var(--focus-origin, center);
     --actual-scale: var(--focus-scale, 1.3);
@@ -2122,10 +2081,7 @@ body.in-edit #ac {
     filter: drop-shadow(0 10px 20px color-mix(in oklab, var(--proj-acc, var(--accent)) 45%, transparent));
   }
 
-  /* Con la forma ya aplicada al marco (media-sized), el medio lo llena por
-     completo: como el marco YA tiene su relacion de aspecto, cover no recorta y
-     no deja franjas; asi el borde pintado coincide con el del marco y el
-     anclaje flush pega el medio real (no una caja con barras) al mosaico. */
+  /* marco ya con la forma del medio (media-sized): cover no recorta aqui */
   .mosaic-tile.is-focus.media-sized .mosaic-media {
     width: 100%;
     height: 100%;
@@ -2147,13 +2103,9 @@ body.in-edit #ac {
   }
 }
 
-/* Ocultar el poster de imagen cuando el vídeo ya está listo y reproduciéndose,
-   para evitar sombras dobles. En escritorio ademas se saca del flujo normal
-   (position:absolute): el poster oculto y el <video> son ambos hijos
-   display:block de .mosaic-frame (Req sizing), y si los dos siguen en flujo
-   normal se APILAN verticalmente (el poster oculto sigue sumando su propia
-   altura) en vez de superponerse - eso inflaba el alto de .mosaic-frame por
-   encima del video real y desalineaba el badge respecto a el. */
+/* oculta el poster cuando el video ya reproduce (evita sombra doble); en
+   escritorio ademas se saca del flujo, si no poster+video se apilan y
+   inflan el alto de .mosaic-frame */
 .mosaic-tile.is-focus.video-ready img.mosaic-media {
   opacity: 0 !important;
 }
@@ -2165,9 +2117,6 @@ body.in-edit #ac {
   }
 }
 
-/* zoom extra para "ver mejor" */
-
-/* Piezas ambientales: atenuadas y ligeramente encogidas, ceden protagonismo */
 .mosaic-tile.is-ambient {
   opacity: .8;
   filter: saturate(.82) brightness(.86);
@@ -2178,9 +2127,7 @@ body.in-edit #ac {
   opacity: .62;
 }
 
-/* Barrido tipo CRT al cambiar de foco (gancho .just-focused, breve).
-   `forwards` deja el barrido fuera de pantalla al terminar (sin volver al
-   centro), evitando el parpadeo del reflejo al acabar la animacion. */
+/* barrido CRT al cambiar de foco; forwards deja el barrido fuera de pantalla, sin volver al centro y parpadear */
 .mosaic-tile.is-focus.just-focused::before {
   content: "";
   position: absolute;
@@ -2203,9 +2150,7 @@ body.in-edit #ac {
   }
 }
 
-/* Badge de tipo para video/gif. Absolute dentro de .mosaic-frame (no del
-   tile): asi su esquina coincide con la del medio, no con la de la celda,
-   y se mueve/escala con el al enfocarse (ver .mosaic-frame arriba). */
+/* absolute dentro de .mosaic-frame (no del tile) para moverse/escalar con el medio al enfocar */
 .mosaic-badge {
   position: absolute;
   left: 8px;
@@ -2221,8 +2166,7 @@ body.in-edit #ac {
   transition: transform .52s cubic-bezier(.2, .7, .2, 1);
 }
 
-/* Evita que el badge se amplie cuando la pieza se escala en foco, aplicando
-   una escala inversa que lo mantiene en su tamaño de lectura original de 9px. */
+/* escala inversa: el badge no crece con la pieza, se queda en 9px */
 .mosaic-tile.is-focus .mosaic-badge {
   transform: scale(calc(1 / var(--actual-scale, 1.3)));
   transform-origin: bottom left;
@@ -2266,7 +2210,6 @@ body.in-edit #ac {
   opacity: .5;
 }
 
-/* pausado por el usuario */
 @keyframes mo-pulse {
 
   0%,
@@ -2296,9 +2239,7 @@ body.in-edit #ac {
   transform: scaleX(-1);
 }
 
-/* des-espeja contenido */
-
-/* Utilidad: contenido solo para lectores de pantalla (region aria-live del mosaico) */
+/* contenido solo para lectores de pantalla */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2503,14 +2444,9 @@ body.in-edit #ac {
     height: 70px;
   }
 
-  /* Mosaico -> tira con scroll-snap (gesto natural por desplazamiento, sin flechas;
-     cero friccion tactil). Se anula la rejilla densa, el jitter y la elevacion de foco.
-     display:flex (no grid) a proposito: con height:100% en un row de grid
-     auto-sizing, el porcentaje de altura de .mosaic-tile se resuelve de forma
-     inconsistente (el track vuelve a la altura de contenido en vez de
-     estirarse), asi que igual se desborda y .proj-vis (overflow:hidden) recorta
-     el sobrante por abajo. Flexbox con align-items:stretch (por defecto)
-     resuelve height:100% contra la altura DEFINIDA del contenedor sin ese lio. */
+  /* tira con scroll-snap, sin rejilla/jitter/foco elevado. flex (no grid):
+     height:100% en un row de grid auto-sizing no se resuelve bien y
+     .proj-vis (overflow:hidden) recortaba el sobrante */
   .proj-mosaic {
     position: relative;
     display: flex;
@@ -2526,11 +2462,14 @@ body.in-edit #ac {
     scroll-snap-align: center;
   }
 
-  /* Forma real de cada tarjeta en la tira: una vez JS conoce el tamaño natural
-     del medio (--media-ar, misma variable que usa el escalado de escritorio) le
-     da esa forma a la tarjeta entera (sin recorte via cover) en vez de rellenar
-     el 78% de columna con crop. Igual para enfocada/no enfocada: la forma nunca
-     depende de is-focus. */
+  /* contain incondicional, no solo bajo .media-sized: mientras JS no conoce
+     el tamaño natural (carga en curso, video sin poster) cae al cover de la
+     regla base y recorta */
+  .mosaic-tile .mosaic-media {
+    object-fit: contain;
+  }
+
+  /* forma real de la tarjeta segun --media-ar, igual enfocada o no */
   .mosaic-tile.media-sized {
     aspect-ratio: var(--media-ar, auto);
     width: auto;
@@ -2545,7 +2484,6 @@ body.in-edit #ac {
   }
 
   .mosaic-tile.media-sized .mosaic-media {
-    object-fit: contain;
     width: 100%;
     height: 100%;
   }
@@ -2558,11 +2496,9 @@ body.in-edit #ac {
   .proj-panel:nth-child(even) .proj-mosaic {
     transform: none;
   }
-
-  /* sin espejado en la tira */
 }
 
-/* === Reduced motion: sin deriva, sin barrido, sin escala, sin jitter (JS ademas no arranca) === */
+/* reduced motion: sin deriva, barrido, escala ni jitter (JS tampoco arranca) */
 @media (prefers-reduced-motion: reduce) {
 
   .mosaic-tile,
@@ -2614,8 +2550,7 @@ body.in-edit #ac {
   --proj-acc: #ff90a8;
 }
 
-/* Alternating layout — la IMAGEN siempre ocupa la pista flexible (grande, 1fr);
-   el TEXTO ocupa la pista fija (--meta-col). Solo alterna el LADO. */
+/* layout alternado: la imagen siempre en la pista 1fr, solo cambia el lado */
 .proj-panel:nth-child(even) .proj-body {
   grid-template-columns: var(--meta-col) 1fr;
 }
@@ -2769,7 +2704,7 @@ body.in-edit #ac {
   color: var(--ok);
 }
 
-/* ══ CATALOG ══ */
+/* catalog */
 .catalog-head {
   display: flex;
   align-items: baseline;

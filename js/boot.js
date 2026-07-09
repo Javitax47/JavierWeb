@@ -1,10 +1,7 @@
 ﻿'use strict';
-/* =============================================================
-   boot.js — Cinematic boot animation
-   Javier Portfolio
-   ============================================================= */
+/* boot.js — cinematic boot animation, Javier Portfolio */
 
-/* ═══ BOOT TIMING — single source of truth ═══ */
+/* boot timing — single source of truth */
 const BOOT_TIMING = Object.freeze({
   SWEEP_START:   0,
   SWEEP_END:     280,
@@ -37,7 +34,7 @@ const CODE_TOKENS = Object.freeze([
   if(!ok) console.warn('[boot] BOOT_TIMING invariants violated', T);
 })();
 
-/* ═══ HELPERS ═══ */
+/* helpers */
 function spawnParticles(container){
   const isMobile = matchMedia('(max-width: 540px)').matches;
   const count = isMobile ? 12 : 24;

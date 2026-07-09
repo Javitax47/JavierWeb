@@ -278,7 +278,7 @@ function normalizeMediaType(type) {
   return (type === 'gif' || type === 'video') ? type : 'image';
 }
 
-/** True si un medio tiene un `src` string no vacio (Req 8.6 / 5.1). */
+/** True si un medio tiene un `src` string no vacio. */
 function hasValidSrc(item) {
   return !!item && typeof item.src === 'string' && item.src.trim() !== '';
 }
@@ -328,7 +328,7 @@ function planMosaic(items, layout) {
   return { tiles: tiles, skipped: skipped };
 }
 
-/* Helpers de presentacion compartidos por buildMosaic ───────────── */
+/* helpers de presentacion compartidos por buildMosaic */
 
 /** Rellena un numero a 2 digitos (p. ej. 1 -> "01"). */
 function pad2(n) {
@@ -384,7 +384,7 @@ function buildMosaic(vis, items, layout, opts) {
 
   const plan = planMosaic(items, layout);
 
-  // Req 8.6: advertir (una vez por medio) de los omitidos por falta de src.
+  // advertir (una vez por medio) de los omitidos por falta de src
   plan.skipped.forEach(function (s) {
     console.warn('[media-mosaic] medio omitido por falta de "src" (indice ' + s.index + ')', s.item);
   });
@@ -451,12 +451,11 @@ function buildMosaic(vis, items, layout, opts) {
     frame.className = 'mosaic-frame';
 
     const img = document.createElement('img');
-    // 'loaded' solo si hay algo que mostrar YA: para video sin poster (el
-    // manifiesto nunca declara uno) d.imgSrc queda vacio, y marcar 'loaded'
-    // sin src deja un <img> visible sin nada que pintar -> icono de archivo
-    // roto del navegador hasta que el <video> real cargue.
+    // 'loaded' solo si hay src real: video sin poster no tiene nada que
+    // pintar y marcaria un icono de archivo roto hasta que cargue el video
     img.className = (isFocus && d.imgSrc) ? 'mosaic-media loaded' : 'mosaic-media';
-    img.setAttribute('loading', 'lazy');
+    // sin loading="lazy": preloadStills ya carga todo de golpe, y lazy
+    // diferia la descarga de los tiles fuera de vista en la tira movil
     img.setAttribute('alt', resolveAlt(d, proj, lang));
     if (d.imgSrc) {
       img.setAttribute(isFocus ? 'src' : 'data-src', d.imgSrc);
@@ -496,7 +495,7 @@ function buildMosaic(vis, items, layout, opts) {
   modedot.setAttribute('aria-hidden', 'true');
   modedot.setAttribute('data-mode', 'auto');
 
-  // Region viva para lectores de pantalla (Req 7.5).
+  // region viva para lectores de pantalla
   const live = document.createElement('p');
   live.className = 'mosaic-live sr-only';
   live.setAttribute('aria-live', 'polite');
@@ -582,7 +581,7 @@ function ensureVideoEl(tile, item) {
 }
 
 function createMediaLoader() {
-  /** @type {Set<*>} timeouts de carga (Req 5.8) pendientes; se limpian en dispose. */
+  /** @type {Set<*>} timeouts de carga pendientes; se limpian en dispose. */
   const loadTimers = new Set();
   /** @type {Array<{el:*,type:string,handler:Function}>} listeners de carga (load/error/loadeddata). */
   const mediaListeners = [];
@@ -598,7 +597,7 @@ function createMediaLoader() {
     if (typeof setTimeout === 'undefined') { return null; }
     const id = setTimeout(function () {
       loadTimers.delete(id);
-      // Timeout de 10 s sin cargar (Req 5.8): marcar error, sin reintentar.
+      // 10s sin cargar: marcar error, sin reintentar
       if (tile && tile.classList &&
         !tile.classList.contains('media-error') &&
         !tile.classList.contains('video-ready')) {
@@ -686,10 +685,9 @@ function createMediaLoader() {
     if (type === 'video') {
       let v = (typeof tile.querySelector === 'function') ? tile.querySelector('video') : null;
       if (!v) {
-        // Ensure video element is created and loaded.
-        ensureLoaded(tile, item); // This will create the video element if it doesn't exist.
+        ensureLoaded(tile, item);
         v = tile.querySelector('video');
-        if (!v) { return; } // If still no video, return.
+        if (!v) { return; }
       }
       if (!reducedMotion) {
         const p = (typeof v.play === 'function') ? v.play() : null;
@@ -698,10 +696,8 @@ function createMediaLoader() {
         v.pause();
       }
     } else if (type === 'gif') {
-      // GIF playback still depends on shouldPlay (focus/visibility)
       if (shouldPlay && !reducedMotion) { ensureLoaded(tile, item); }
     }
-    // image: no playback effect.
   }
 
   function dispose() {
@@ -737,18 +733,17 @@ function createFocusScheduler(ctrl, opts) {
     clearDrift();
     driftTimer = _setTimeout(function () {
       driftTimer = null;
-      // Solo deriva si seguimos en AUTO en el instante del disparo (Property 4).
+      // solo deriva si seguimos en AUTO en el instante del disparo
       if (ctrl.getMode() === 'AUTO') {
         ctrl.setFocus(ctrl.getFocus() + 1, { source: 'auto' });
       }
-      // Re-encadena un unico timer mientras siga activo (Req 6.4).
       if (running) { armTimer(); }
     }, dwell);
   }
 
   function start() {
-    if (getReducedMotion()) { return; }          // nunca arranca con reduced motion (Req 7.1)
-    if (ctrl.getCount() < 2) { return; }          // 1 medio: nada que derivar (Req 2.7)
+    if (getReducedMotion()) { return; }          // nunca arranca con reduced motion
+    if (ctrl.getCount() < 2) { return; }          // 1 medio: nada que derivar
     if (running) { return; }
     running = true;
     armTimer();
@@ -849,7 +844,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     pendingTimers.clear();
   }
 
-  /* ── Helpers de DOM ───────────────────────────────────────── */
+  /* helpers de DOM */
 
   function closestTile(node) {
     if (!node || typeof node.closest !== 'function') { return null; }
@@ -974,11 +969,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
       return;
     }
 
-    // (1) El marco adopta la forma del medio y lo contiene dentro de la celda.
-    // La forma en si (aspect-ratio/width/height/object-fit) vive en CSS via
-    // --media-ar y la clase .media-sized (ver @media max-width:900px en
-    // source.css para movil, y @media min-width:901px mas abajo para el
-    // escalado de foco en escritorio).
+    // la forma (aspect-ratio/width/height/object-fit) vive en CSS via --media-ar y .media-sized
     tile.style.setProperty('--media-ar', natW + ' / ' + natH);
     tile.classList.add('media-sized');
 
@@ -1017,7 +1008,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     frame.style.setProperty('--actual-scale', String(clamped));
   }
 
-  /* ── Render (invariante: exactamente un is-focus) ─────────── */
+  /* render: invariante de exactamente un is-focus */
 
   function render(prev, ropts) {
     ropts = ropts || {};
@@ -1026,7 +1017,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     const visible = state.panelVisible && state.docVisible;
     const isNeutral = !!ropts.neutral;
 
-    // 1. Clases + aria-pressed (Req 1.2, 7.4). Sin reflow: solo clases.
+    // 1. clases + aria-pressed, sin reflow
     for (let k = 0; k < dom.tiles.length; k++) {
       const tile = dom.tiles[k];
       const isFocus = !isNeutral && (k === idx);
@@ -1036,16 +1027,13 @@ function createController(panel, vis, dom, items, proj, initialState) {
       tile.setAttribute('aria-pressed', isFocus ? 'true' : 'false');
     }
 
-    // 2. object-position de interes + barrido CRT breve (salvo reduced-motion,
-    //    modo neutral o cuando se pide silencioso, p. ej. al deshacer el hover).
-    //    El recorte de escala va en el paso 3 (tras crear el <video>).
+    // 2. object-position de interes + barrido CRT (salvo reduced-motion/neutral/silencioso)
     if (!isNeutral) {
       applyFocusPos(dom.tiles[idx], items[idx] && items[idx].focus);
       if (prev !== idx && !state.reducedMotion && !ropts.noSweep) { flashSweep(dom.tiles[idx]); }
     }
 
-    // 3. Carga del enfocado + prefetch del siguiente (Req 5.2, 5.3) y politica
-    //    de reproduccion de un unico medio (Req 5.6, 5.7).
+    // 3. carga del enfocado + prefetch del siguiente + politica de un unico medio reproduciendo
     if (!isNeutral) {
       loader.ensureLoaded(dom.tiles[idx], items[idx]);   // crea el <video> si toca
       clampFocusScale(dom.tiles[idx]);                    // forma + recorte (ya con el <video> en el DOM)
@@ -1056,12 +1044,11 @@ function createController(panel, vis, dom, items, proj, initialState) {
     }
     for (let m = 0; m < dom.tiles.length; m++) {
       const tileItem = items[m];
-      // For GIFs, shouldPlay depends on focus and visibility. For videos, it's always true unless reducedMotion.
       const shouldPlayForGif = !isNeutral && (m === idx) && visible;
       loader.applyPlayback(dom.tiles[m], tileItem, shouldPlayForGif, state.reducedMotion);
     }
 
-    // 4. HUD + accesibilidad.
+    // 4. HUD + accesibilidad
     if (!isNeutral) { updateReadout(idx); }
     setModeDot();
     if (!isNeutral) { announce(idx); }
@@ -1072,7 +1059,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     render(state.focusIndex, { neutral: true });
   }
 
-  /* ── setFocus: nucleo de la interaccion ───────── */
+  /* setFocus: nucleo de la interaccion */
 
   function setFocus(i, opts) {
     opts = opts || {};
@@ -1105,7 +1092,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     render(prev);
   }
 
-  /* ── API publica de navegacion ────────────────────────────── */
+  /* API publica de navegacion */
 
   function getFocus() { return state.focusIndex; }
   function getMode() { return state.mode; }
@@ -1138,7 +1125,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     }
   }
 
-  /* ── Visibilidad ──────────────────────────────── */
+  /* visibilidad */
 
   function _onVisibility(visible) {
     if (gate) {
@@ -1152,7 +1139,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     if (!isVisible) {
       state = Object.assign({}, state, { mode: state.docVisible ? 'PAUSED_OFFSCREEN' : 'PAUSED_HIDDEN' });
       if (scheduler) { scheduler.pause(); }
-      pauseAllMedia();                                   // Req 6.6 / 5.10
+      pauseAllMedia();
     } else {
       if (state.reducedMotion) {
         state = Object.assign({}, state, { mode: 'STATIC_RM' });
@@ -1160,12 +1147,11 @@ function createController(panel, vis, dom, items, proj, initialState) {
         state = Object.assign({}, state, { mode: 'USER_FOCUS' });
       } else {
         state = Object.assign({}, state, { mode: 'AUTO' });
-        if (scheduler) { scheduler.start(); }            // Req 6.3
+        if (scheduler) { scheduler.start(); }
       }
       const idx = state.focusIndex;
       for (let k = 0; k < dom.tiles.length; k++) {
         const tileItem = items[k];
-        // For GIFs, shouldPlay depends on focus. For videos, it's always true unless reducedMotion.
         const shouldPlayForGif = (k === idx);
         loader.applyPlayback(dom.tiles[k], tileItem, shouldPlayForGif, state.reducedMotion);
       }
@@ -1173,7 +1159,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     setModeDot();
   }
 
-  /* ── Reactividad a prefers-reduced-motion ────── */
+  /* reactividad a prefers-reduced-motion */
 
   function bindReducedMotion() {
     const mm = getMatchMedia();
@@ -1183,7 +1169,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     mqlHandler = function (e) {
       state = reduce(state, { type: 'setRM', value: !!e.matches });
       if (state.reducedMotion) {
-        if (scheduler) { scheduler.pause(); }            // sin deriva ni autoplay (Req 7.1)
+        if (scheduler) { scheduler.pause(); }            // sin deriva ni autoplay
         pauseAllMedia();
         setModeDot();
       } else {
@@ -1194,7 +1180,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     else if (typeof mql.addListener === 'function') { mql.addListener(mqlHandler); }
   }
 
-  /* ── Cableado de eventos hover/focus/click/teclado ── */
+  /* cableado de eventos hover/focus/click/teclado */
 
   function _bind(sched, vgate) {
     scheduler = sched;
@@ -1278,7 +1264,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
       if (scheduler) {
         state = reduce(state, { type: 'mouseleave' });
         setModeDot();
-        scheduler.resumeAfter(MOSAIC_TIMING.RESUME_DELAY);   // Req 3.4
+        scheduler.resumeAfter(MOSAIC_TIMING.RESUME_DELAY);
       }
     });
 
@@ -1297,11 +1283,11 @@ function createController(panel, vis, dom, items, proj, initialState) {
     on(mosaic, 'click', function (e) {
       const tile = closestTile(e.target);
       if (!tile) { return; }
-      setFocus(tileIndex(tile), { source: 'click' });       // Req 3.6
+      setFocus(tileIndex(tile), { source: 'click' });
       focusTile(state.focusIndex);
     });
 
-    // ArrowRight/ArrowLeft: avance/retroceso con wrap + traslado del foco (Req 3.2/3.3).
+    // ArrowRight/ArrowLeft: avance/retroceso con wrap + traslado del foco
     on(mosaic, 'keydown', function (e) {
       const key = e.key;
       if (key === 'ArrowRight' || key === 'Right') { e.preventDefault(); next(); }
@@ -1402,7 +1388,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     bindReducedMotion();
   }
 
-  /* ── relabel ─────────────────────────────────── */
+  /* relabel */
 
   function relabel() {
     const lang = currentLang();
@@ -1420,7 +1406,7 @@ function createController(panel, vis, dom, items, proj, initialState) {
     announce(state.focusIndex);                     // anuncio en el nuevo idioma
   }
 
-  /* ── destroy ─────────────────────────────────── */
+  /* destroy */
 
   function destroy() {
     if (destroyed) { return; }
@@ -1493,10 +1479,10 @@ function initMediaMosaic(panel) {
   const items = safeGetManifest(proj);
   const vis = panel.querySelector('.proj-vis');
 
-  // Sin .proj-vis o sin medios: no hidratar, conservar markup base (Req 1.6 / 8.5).
+  // sin .proj-vis o sin medios: no hidratar, conservar markup base
   if (!vis || !items || items.length === 0) { return null; }
 
-  // Idempotencia (Req 8.2 / Property 11): reutilizar el controlador existente.
+  // idempotencia: reutilizar el controlador existente si ya esta montado
   if (vis.dataset && vis.dataset.mosaicReady === '1' && vis.__mosaicCtrl) {
     return vis.__mosaicCtrl;
   }

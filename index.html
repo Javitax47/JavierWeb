@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/source.css">
 <style>
-  /* Estilos para el sistema unificado de proyectos (Acordeón Avanzado) */
   .project-item {
     border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
     transition: background-color 0.25s ease;
@@ -17,8 +16,7 @@
     position: relative;
     overflow: hidden;
   }
-  
-  /* Indicador vertical de estado */
+
   .project-item::before {
     content: '';
     position: absolute;
@@ -36,7 +34,6 @@
     transform: scaleY(1);
   }
 
-  /* Efecto Spotlight dinámico acoplado al cursor */
   .project-item::after {
     content: '';
     position: absolute;
@@ -136,7 +133,6 @@
     }
   }
 
-  /* Contenedores de colapso con curvas fluidas */
   .project-details-wrap {
     height: 0;
     overflow: hidden;
@@ -160,7 +156,6 @@
     margin-top: 0;
   }
 
-  /* --- NEUTRALIZACIÓN DE BORDES RÍGIDOS EN HOVER --- */
   .mosaic-tile, .mosaic-tile * {
     border: none !important;
     outline: none !important;
@@ -171,7 +166,6 @@
     display: none !important;
   }
 
-  /* --- PROFUNDIDAD DE CAMPO CINEMATOGRÁFICA --- */
   .proj-mosaic {
     gap: 12px;
   }
@@ -183,19 +177,13 @@
                 opacity 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
     will-change: transform, filter, opacity;
   }
-  /* Las tarjetas no activas se difuminan de manera gradual */
   .proj-mosaic:hover .mosaic-tile.is-ambient,
   .proj-mosaic:focus-within .mosaic-tile.is-ambient {
     opacity: 0.45;
     filter: blur(1.8px) grayscale(20%);
   }
-  /* La tarjeta enfocada resalta limpia y nítidamente sin bordes.
-     Sin box-shadow aqui: la pieza enfocada usa object-fit:contain (puede
-     dejar un hueco transparente si el aspect-ratio no llena la celda), y un
-     box-shadow en esta caja dibujaba un rectangulo de sombra en ese hueco
-     que no correspondia a ningun borde visible de la imagen. La sombra real
-     va en .mosaic-tile.is-focus .mosaic-media via filter:drop-shadow (ver
-     css/source.css), que sigue el contorno pintado de la imagen. */
+  /* sin box-shadow aqui: dibujaba un rectangulo en el hueco transparente
+     del object-fit:contain; la sombra real va en drop-shadow (source.css) */
   .proj-mosaic .mosaic-tile:hover,
   .proj-mosaic .mosaic-tile:focus-visible,
   .proj-mosaic .mosaic-tile.is-focus {
@@ -283,9 +271,7 @@
       </svg>
     </div>
     <div class="marquee-wrap" aria-hidden="true">
-      <!-- El listado va DUPLICADO a proposito: la animacion `marquee` desplaza
-           translateX(-50%), es decir el ancho de una copia, para hacer bucle sin
-           costura. Si edita la lista, aplique el MISMO cambio a las dos copias. -->
+      <!-- duplicado a proposito: marquee desplaza translateX(-50%) para loop sin costura -->
       <div class="marquee-track">
         <!-- copia 1 -->
         <span>React / Next</span><span class="sep">·</span>
@@ -797,8 +783,8 @@
         <div>
           <div class="sub"><em data-compile data-compile-dur="240" data-es="Bachillerato Científico" data-en="Scientific Baccalaureate">Bachillerato Científico</em></div>
           <div class="who">2020–2022 · IES Tirant lo Blanc</div>
-          <div class="body" data-es="Fundamentos en matemáticas, física y química. Primer contacto con la programación." data-en="Foundations in mathematics, physics and chemistry. First contact with programming.">
-            Fundamentos en matemáticas, física y química. Primer contacto con la programación.
+          <div class="body" data-es="Fundamentos en matemáticas, física y química." data-en="Foundations in mathematics, physics and chemistry.">
+            Fundamentos en matemáticas, física y química.
           </div>
         </div>
       </div>

@@ -66,7 +66,6 @@ function initHero() {
   const pio = new IntersectionObserver(entries => entries.forEach(e => {
     if (!e.isIntersecting) return;
     const panel = e.target;
-    // Si el panel no pertenece a un elemento expandido o visible, ignoramos para optimizar carga
     const item = panel.closest('.project-item');
     if (item && !item.classList.contains('is-expanded')) return;
     const fill = panel.querySelector('.proj-boot-fill');
@@ -91,7 +90,6 @@ function initAccordion() {
     const content = item.querySelector('.project-details-content');
     if (!row || !wrap || !content) return;
 
-    // Rastreador físico de cursor para el efecto Spotlight Holográfico
     row.addEventListener('mousemove', (e) => {
       const rect = row.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -104,7 +102,6 @@ function initAccordion() {
       e.preventDefault();
       const isExpanded = item.classList.contains('is-expanded');
 
-      // Buscar si hay algún elemento expandido actualmente activo
       let activeItem = null;
       items.forEach(otherItem => {
         if (otherItem.classList.contains('is-expanded')) {
@@ -112,12 +109,11 @@ function initAccordion() {
         }
       });
 
-      // Calcular y sincronizar la posición de desplazamiento si vamos a expandir el proyecto
       if (!isExpanded) {
-        const headerOffset = 90; // Altura de la cabecera fija
+        const headerOffset = 90; // altura de la cabecera fija
         let targetY = item.offsetTop - headerOffset;
 
-        // Si el elemento activo está arriba del pulsado, al colapsar desplazará la posición real hacia arriba
+        // si el activo esta arriba del pulsado, al colapsarlo su hueco desplaza la posicion real hacia arriba
         if (activeItem && activeItem !== item) {
           if (activeItem.offsetTop < item.offsetTop) {
             const activeWrap = activeItem.querySelector('.project-details-wrap');
@@ -127,19 +123,17 @@ function initAccordion() {
           }
         }
 
-        // Ejecutar desplazamiento suave analítico a la coordenada final calculada
         window.scrollTo({
           top: Math.max(0, targetY),
           behavior: 'smooth'
         });
       }
 
-      // Colapsa el resto de proyectos de forma limpia e inmediata
       items.forEach(otherItem => {
         if (otherItem !== item && otherItem.classList.contains('is-expanded')) {
           const otherWrap = otherItem.querySelector('.project-details-wrap');
           if (otherWrap) {
-            otherWrap.style.overflow = 'hidden'; // Ocultar desbordamiento inmediatamente
+            otherWrap.style.overflow = 'hidden';
             otherWrap.style.height = otherWrap.scrollHeight + 'px';
             requestAnimationFrame(() => {
               otherWrap.style.height = '0px';
@@ -147,7 +141,7 @@ function initAccordion() {
           }
           otherItem.classList.remove('is-expanded');
           otherItem.querySelector('.project-row')?.setAttribute('aria-expanded', 'false');
-          // Pausa la telemetría del colapsado
+          // destruye el mosaico al colapsar: si no, sigue con scheduler/listeners activos fuera de vista
           const otherPanel = otherItem.querySelector('.proj-panel');
           if (otherPanel && otherPanel.__mosaicCtrl) {
             try { otherPanel.__mosaicCtrl.destroy(); } catch (err) { }
@@ -156,8 +150,7 @@ function initAccordion() {
       });
 
       if (isExpanded) {
-        // Colapsa el seleccionado de forma inmediata
-        wrap.style.overflow = 'hidden'; // Ocultar desbordamiento inmediatamente
+        wrap.style.overflow = 'hidden';
         wrap.style.height = wrap.scrollHeight + 'px';
         requestAnimationFrame(() => {
           wrap.style.height = '0px';
@@ -169,7 +162,6 @@ function initAccordion() {
           try { panel.__mosaicCtrl.destroy(); } catch (err) { }
         }
       } else {
-        // Expande el seleccionado
         wrap.style.overflow = 'hidden';
         wrap.style.height = '0px';
         requestAnimationFrame(() => {
@@ -178,9 +170,8 @@ function initAccordion() {
 
         setTimeout(() => {
           wrap.style.height = 'auto';
-          wrap.style.overflow = 'visible'; // Habilitar overflow solo al terminar para soportar el zoom de mosaicos
+          wrap.style.overflow = 'visible'; // visible solo al terminar: si no, el zoom de foco del mosaico se recorta
 
-          // Inicializa telemetría y mosaico en el contenedor ahora visible
           const panel = item.querySelector('.proj-panel');
           if (panel) {
             panel.classList.add('booted');
@@ -194,7 +185,7 @@ function initAccordion() {
           if (typeof computeAnchors === 'function') {
             computeAnchors();
           }
-        }, 450); // Sincronizado con la duración de la transición CSS
+        }, 450); // sincronizado con la duracion de la transicion CSS
         item.classList.add('is-expanded');
         row.setAttribute('aria-expanded', 'true');
       }
@@ -202,7 +193,7 @@ function initAccordion() {
   });
 }
 
-/* ═══ CANVAS VISUALIZATIONS ═══ */
+/* canvas visualizations */
 function initVis(panel) {
   const proj = panel.dataset.proj;
   const canvas = panel.querySelector('.proj-canvas');
@@ -286,7 +277,7 @@ function initVis(panel) {
 
       const speed = 0.04 + hovT * 0.06;
 
-      // --- MÁQUINA DE ESTADOS PARA LA FUSIÓN ---
+      // maquina de estados de la fusion
       if (animState === 'inspiral') {
         sep -= speed * 0.012 * (1 + (1 - sep) * 4);
         ph += speed * (1 + (1 - sep) * 3);

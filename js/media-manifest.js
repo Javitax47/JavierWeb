@@ -1,9 +1,5 @@
 'use strict';
-/* =============================================================
-   media-manifest.js — Manifiesto declarativo de medios por proyecto
-                        (Focus-Drift Mosaic)
-   Javier Portfolio
-   ============================================================= */
+/* media-manifest.js — manifiesto declarativo de medios por proyecto (Focus-Drift Mosaic) */
 
 /**
  * Campos por medio (ademas de type/src/captionEs/captionEn):
