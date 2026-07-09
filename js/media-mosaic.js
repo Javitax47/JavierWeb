@@ -451,7 +451,11 @@ function buildMosaic(vis, items, layout, opts) {
     frame.className = 'mosaic-frame';
 
     const img = document.createElement('img');
-    img.className = isFocus ? 'mosaic-media loaded' : 'mosaic-media';
+    // 'loaded' solo si hay algo que mostrar YA: para video sin poster (el
+    // manifiesto nunca declara uno) d.imgSrc queda vacio, y marcar 'loaded'
+    // sin src deja un <img> visible sin nada que pintar -> icono de archivo
+    // roto del navegador hasta que el <video> real cargue.
+    img.className = (isFocus && d.imgSrc) ? 'mosaic-media loaded' : 'mosaic-media';
     img.setAttribute('loading', 'lazy');
     img.setAttribute('alt', resolveAlt(d, proj, lang));
     if (d.imgSrc) {
@@ -926,8 +930,15 @@ function createController(panel, vis, dom, items, proj, initialState) {
   }
 
   function preloadStills() {
+    const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
+      !window.matchMedia('(min-width: 901px)').matches;
+
     for (let k = 0; k < dom.tiles.length; k++) {
       loader.preloadStill(dom.tiles[k], items[k]);
+      if (isMobile) {
+        // En móvil calculamos la proporción de todos los recursos para reconfigurar sus dimensiones
+        clampFocusScale(dom.tiles[k]);
+      }
     }
   }
   function clampFocusScale(tile) {
@@ -935,12 +946,13 @@ function createController(panel, vis, dom, items, proj, initialState) {
     const frame = (typeof tile.querySelector === 'function') ? tile.querySelector('.mosaic-frame') : null;
     if (!frame || !frame.style) { return; }
 
-    // En <=900px (tira movil) no hay escalado (ver source.css): el marco llena
-    // el tile. Cualquier --actual-scale inline heredado se retira.
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
-      !window.matchMedia('(min-width: 901px)').matches) {
+    // Evaluamos si el dispositivo tiene un viewport móvil (<= 900px)
+    const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
+      !window.matchMedia('(min-width: 901px)').matches;
+
+    if (isMobile) {
+      // En móvil retiramos cualquier escala inline heredada para que no haya zoom de enfoque
       frame.style.removeProperty('--actual-scale');
-      return;
     }
 
     const desired = parseFloat(tile.style.getPropertyValue('--focus-scale')) || 1.3;
@@ -951,15 +963,26 @@ function createController(panel, vis, dom, items, proj, initialState) {
     if (vid && vid.videoWidth > 0) { natW = vid.videoWidth; natH = vid.videoHeight; }
     else if (img && img.complete && img.naturalWidth > 0) { natW = img.naturalWidth; natH = img.naturalHeight; }
     if (!(natW > 0) || !(natH > 0)) {
-      const recompute = function () { if (tile.classList.contains('is-focus')) { clampFocusScale(tile); } };
+      const recompute = function () {
+        // En móvil ajustamos la dimensión tan pronto como cargue cualquier celda; en desktop solo la activa
+        if (isMobile || tile.classList.contains('is-focus')) {
+          clampFocusScale(tile);
+        }
+      };
       if (vid && typeof vid.addEventListener === 'function') { vid.addEventListener('loadedmetadata', recompute, { once: true }); }
       if (img && typeof img.addEventListener === 'function') { img.addEventListener('load', recompute, { once: true }); }
       return;
     }
 
     // (1) El marco adopta la forma del medio y lo contiene dentro de la celda.
+    // La forma en si (aspect-ratio/width/height/object-fit) vive en CSS via
+    // --media-ar y la clase .media-sized (ver @media max-width:900px en
+    // source.css para movil, y @media min-width:901px mas abajo para el
+    // escalado de foco en escritorio).
     tile.style.setProperty('--media-ar', natW + ' / ' + natH);
     tile.classList.add('media-sized');
+
+    if (isMobile) { return; }
 
     // (2) Medir el marco ya reformado (offsetWidth fuerza el reflujo sincrono).
     const w0 = frame.offsetWidth;   // tamaño SIN escalar (el transform no altera offset*)
@@ -1061,8 +1084,8 @@ function createController(panel, vis, dom, items, proj, initialState) {
 
     const prev = state.focusIndex;
     const idx = normalizeIndex(i, n);
-    if (source === 'hover' || source === 'focus') {
-      state = reduce(state, { type: source, index: idx });
+    if (source === 'hover' || source === 'focus' || source === 'scroll') {
+      state = reduce(state, { type: 'focus', index: idx });
       if (scheduler) { scheduler.pause(); }
     } else if (source === 'key') {
       state = reduce(state, { type: 'key', index: idx });
@@ -1323,6 +1346,58 @@ function createController(panel, vis, dom, items, proj, initialState) {
         });
       }, { passive: true });
     }
+
+    // Scroll horizontal en el mosaico móvil: enfoca la tarjeta que queda en medio
+    let mosaicScrollTicking = false;
+    on(mosaic, 'scroll', function () {
+      if (destroyed) { return; }
+      if (mosaicScrollTicking) { return; }
+      mosaicScrollTicking = true;
+      requestAnimationFrame(function () {
+        mosaicScrollTicking = false;
+        if (destroyed) { return; }
+
+        const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
+          !window.matchMedia('(min-width: 901px)').matches;
+        if (!isMobile) { return; }
+
+        const containerRect = mosaic.getBoundingClientRect();
+        const centerX = containerRect.left + containerRect.width / 2;
+
+        let closestIdx = -1;
+        let minDistance = Infinity;
+
+        for (let i = 0; i < dom.tiles.length; i++) {
+          const tile = dom.tiles[i];
+          const tileRect = tile.getBoundingClientRect();
+          const tileCenterX = tileRect.left + tileRect.width / 2;
+          const distance = Math.abs(tileCenterX - centerX);
+
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestIdx = i;
+          }
+        }
+
+        if (closestIdx >= 0 && closestIdx !== state.focusIndex) {
+          setFocus(closestIdx, { source: 'scroll' });
+        }
+      });
+    });
+
+    // Detector de cambio de tamaño de ventana: limpia o aplica estilos si cambia el formato
+    let lastWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    on(window, 'resize', function () {
+      if (destroyed) { return; }
+      const currentWidth = window.innerWidth;
+      const crossedThreshold = (lastWidth > 900 && currentWidth <= 900) || (lastWidth <= 900 && currentWidth > 900);
+      if (crossedThreshold) {
+        for (let k = 0; k < dom.tiles.length; k++) {
+          clampFocusScale(dom.tiles[k]);
+        }
+      }
+      lastWidth = currentWidth;
+    });
 
     bindReducedMotion();
   }
