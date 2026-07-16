@@ -1161,6 +1161,231 @@ function initVis(panel) {
         }
       }
     });
+  } else if (proj === 'garagewash') {
+    // Casco sucio: manchas orgánicas que el chorro va disolviendo.
+    // El cursor apunta la boquilla; el HUD mide la cobertura restante.
+    const blobs = [], drops = [], mist = [], confetti = [];
+    const CONF_COLS = ['#4fc3e8', '#a8e4f6', '#7adfc8', '#f2c14e', '#e8825f', '#e9f4f8'];
+    let initialLoad = 0, ph = 0, doneHold = 0, respawnT = -1;
+
+    // Sube por todo el ancho: el canvas es una tira (~13:1), así que dos cañones
+    // en las esquinas dejarían el centro vacío. Velocidad derivada del ápice
+    // deseado en fracción de H, si no en un canvas bajo se sale todo por arriba.
+    function popConfetti(W, H) {
+      const gA = H * 0.0006;
+      for (let i = 0; i < 90; i++) {
+        const apex = H * (0.35 + Math.random() * 0.5);
+        confetti.push({
+          x: W * (0.04 + Math.random() * 0.92),
+          y: H + 3 + Math.random() * 34, // arrancan bajo el borde: entran escalonados
+          vx: (Math.random() - 0.5) * 1.6,
+          vy: -Math.sqrt(2 * gA * apex),
+          g: gA,
+          w: 2 + Math.random() * 3, h: 3.5 + Math.random() * 3,
+          rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.26,
+          sw: Math.random() * Math.PI * 2,
+          a: 1,
+          c: CONF_COLS[(Math.random() * CONF_COLS.length) | 0]
+        });
+      }
+    }
+
+    // Las manchas nacen transparentes y suben hasta aMax con un retardo propio,
+    // así el reinicio del ciclo se ve como la marea volviendo y no como un corte.
+    function seedDirt() {
+      blobs.length = 0;
+      for (let i = 0; i < 58; i++) {
+        const n = 7 + ((Math.random() * 4) | 0);
+        const pts = [];
+        for (let j = 0; j < n; j++) pts.push(0.6 + Math.random() * 0.55);
+        blobs.push({
+          x: 0.02 + Math.random() * 0.96,
+          y: 0.1 + Math.random() * 0.8,
+          r: 6 + Math.random() * 12,
+          a: 0,
+          aMax: 0.5 + Math.random() * 0.5,
+          delay: Math.random() * 55,
+          pts
+        });
+      }
+      initialLoad = 0;
+      for (const b of blobs) initialLoad += b.aMax * b.r * b.r;
+      respawnT = 0;
+    }
+    seedDirt();
+
+    // Contorno irregular cerrado: curvas entre puntos medios para que no se vea el polígono
+    function blobPath(cx, cy, r, pts) {
+      const n = pts.length;
+      const vx = i => cx + Math.cos((i % n) / n * Math.PI * 2) * r * pts[i % n];
+      const vy = i => cy + Math.sin((i % n) / n * Math.PI * 2) * r * pts[i % n] * 0.7;
+      ctx.beginPath();
+      ctx.moveTo((vx(0) + vx(1)) / 2, (vy(0) + vy(1)) / 2);
+      for (let i = 1; i <= n; i++) {
+        ctx.quadraticCurveTo(vx(i), vy(i), (vx(i) + vx(i + 1)) / 2, (vy(i) + vy(i + 1)) / 2);
+      }
+      ctx.closePath();
+    }
+
+    runRender(function draw() {
+      hovT += (isHover ? 0.06 : -0.04); hovT = Math.max(0, Math.min(1, hovT));
+      mx += (tmx - mx) * 0.07; my += (tmy - my) * 0.07;
+      const W = CW, H = CH;
+      ctx.fillStyle = 'rgba(' + RGB_TRAIL + ',0.3)';
+      ctx.fillRect(0, 0, W, H);
+      ph += 0.011;
+
+      // Chapa mojada: brillo vertical y líneas de agua que ondulan
+      const sheen = ctx.createLinearGradient(0, 0, 0, H);
+      sheen.addColorStop(0, 'rgba(' + RGB_CARD + ',0.5)');
+      sheen.addColorStop(0.55, 'rgba(' + RGB_CELL + ',0.22)');
+      sheen.addColorStop(1, 'rgba(' + RGB_CARD + ',0.55)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = 'rgba(79,195,232,0.07)'; ctx.lineWidth = 1;
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 10) {
+          const y = H * (0.28 + k * 0.24) + Math.sin(x * 0.011 + ph * 1.6 + k * 2) * 3.5;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // Rampa de reaparición. Se corta por tiempo y no esperando a que todas
+      // lleguen a aMax: si no, el chorro que ya está limpiando la mantendría viva.
+      if (respawnT >= 0) {
+        respawnT++;
+        for (const b of blobs) {
+          if (respawnT > b.delay && b.a < b.aMax) b.a = Math.min(b.aMax, b.a + 0.013);
+        }
+        if (respawnT > 145) respawnT = -1;
+      }
+
+      const nx = 7, ny = H - 4;
+      const tx = hovT > 0.05 ? mx * W : (0.5 + Math.sin(ph * 0.9) * 0.4) * W;
+      const ty = hovT > 0.05 ? my * H : (0.45 + Math.sin(ph * 2.1) * 0.28) * H;
+      const jetR = 9 + hovT * 4;
+
+      // El chorro come alpha y radio de las manchas que alcanza
+      for (const b of blobs) {
+        if (b.a <= 0.02) continue;
+        const d = Math.hypot(b.x * W - tx, (b.y * H - ty) * 1.25);
+        if (d < jetR + b.r) {
+          const bite = (1 - d / (jetR + b.r)) * 0.04;
+          b.a = Math.max(0, b.a - bite);
+          b.r = Math.max(1.5, b.r - bite * 2);
+        }
+      }
+
+      // Relleno plano en dos capas: más barato que un gradiente por mancha y por
+      // frame, y el contorno irregular ya da el aspecto orgánico.
+      for (const b of blobs) {
+        if (b.a <= 0.02) continue;
+        const cx = b.x * W, cy = b.y * H;
+        blobPath(cx, cy, b.r, b.pts);
+        ctx.fillStyle = 'rgba(94,72,40,' + (b.a * 0.6) + ')';
+        ctx.fill();
+        blobPath(cx, cy - b.r * 0.12, b.r * 0.66, b.pts);
+        ctx.fillStyle = 'rgba(142,108,60,' + (b.a * 0.75) + ')';
+        ctx.fill();
+      }
+
+      let load = 0;
+      for (const b of blobs) load += b.a * b.r * b.r;
+      const clean = initialLoad > 0 ? 1 - load / initialLoad : 1;
+
+      // Gotas en parábola. Cada una lleva su propia dispersión para que el chorro
+      // abra en cono al llegar y no se vea una única línea recta.
+      if (drops.length < 60) drops.push({
+        t: 0,
+        off: (Math.random() - 0.5) * 2.4,
+        jx: (Math.random() - 0.5) * 16,
+        jy: (Math.random() - 0.5) * 10,
+        spd: 0.017 + Math.random() * 0.01,
+        w: 0.6 + Math.random() * 0.8
+      });
+      ctx.lineCap = 'round';
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const d = drops[i];
+        d.t += d.spd;
+        const gx = tx + d.jx, gy = ty + d.jy;
+        if (d.t >= 1) {
+          drops.splice(i, 1);
+          if (mist.length < 70) mist.push({ x: gx, y: gy, vx: (Math.random() - 0.5) * 0.55, vy: -0.12 - Math.random() * 0.3, a: 0.45 + Math.random() * 0.25, r: 0.8 + Math.random() * 1.8 });
+          continue;
+        }
+        const arcOf = t => Math.sin(t * Math.PI) * (14 + d.off * 8);
+        const t2 = Math.min(1, d.t + 0.014);
+        ctx.strokeStyle = 'rgba(79,195,232,' + (0.4 - d.t * 0.15) + ')';
+        ctx.lineWidth = d.w;
+        ctx.beginPath();
+        ctx.moveTo(nx + (gx - nx) * d.t, ny + (gy - ny) * d.t - arcOf(d.t));
+        ctx.lineTo(nx + (gx - nx) * t2, ny + (gy - ny) * t2 - arcOf(t2));
+        ctx.stroke();
+      }
+
+      // Bruma que sale del impacto y se posa
+      for (let i = mist.length - 1; i >= 0; i--) {
+        const m = mist[i];
+        m.x += m.vx; m.y += m.vy; m.vy += 0.011; m.a -= 0.009;
+        if (m.a <= 0) { mist.splice(i, 1); continue; }
+        ctx.fillStyle = 'rgba(168,228,246,' + (m.a * 0.5) + ')';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+      }
+
+      const g2 = ctx.createRadialGradient(tx, ty, 0, tx, ty, jetR * 1.7);
+      g2.addColorStop(0, 'rgba(168,228,246,0.34)');
+      g2.addColorStop(0.5, 'rgba(79,195,232,0.15)');
+      g2.addColorStop(1, 'rgba(79,195,232,0)');
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(tx, ty, jetR * 1.7, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = 'rgba(' + RGB_STAR + ',0.5)';
+      ctx.beginPath(); ctx.arc(nx, ny, 2.2, 0, Math.PI * 2); ctx.fill();
+
+      const bw = 54, bx = W - bw - 8, by = 7;
+      ctx.fillStyle = 'rgba(' + RGB_CELL + ',0.9)';
+      roundRect(ctx, bx, by, bw, 5, 2); ctx.fill();
+      ctx.fillStyle = '#4fc3e8';
+      roundRect(ctx, bx, by, Math.max(2, bw * clean), 5, 2); ctx.fill();
+      ctx.fillStyle = '#4fc3e8'; ctx.font = '7px ' + MONO_FAMILY;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText((clean * 100).toFixed(0) + '% CLEAN', bx + bw, by + 8);
+
+      // Al llegar al umbral: confeti, un respiro, y a ensuciarse otra vez.
+      // Tras seedDirt respawnT vuelve a 0, así que la rama de arriba corta el
+      // contador y no hay doble ráfaga.
+      if (respawnT >= 0 || clean <= 0.99) {
+        doneHold = 0;
+      } else {
+        if (doneHold === 0) popConfetti(W, H);
+        if (++doneHold > 90) {
+          doneHold = 0;
+          seedDirt();
+        }
+      }
+
+      // Papelillos: cos(sw) estrecha el ancho para simular el giro sobre su eje
+      for (let i = confetti.length - 1; i >= 0; i--) {
+        const c = confetti[i];
+        c.vy += c.g; c.vx *= 0.995;
+        c.x += c.vx; c.y += c.vy;
+        c.rot += c.vr; c.sw += 0.14;
+        if (c.vy > 0) c.a -= 0.007;
+        if (c.a <= 0 || (c.vy > 0 && c.y > H + 40)) { confetti.splice(i, 1); continue; }
+        const sx = 0.1 + Math.abs(Math.cos(c.sw)) * 0.9;
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.rot);
+        ctx.globalAlpha = c.a;
+        ctx.fillStyle = c.c;
+        ctx.fillRect(-c.w * sx / 2, -c.h / 2, c.w * sx, c.h);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    });
   }
 }
 

@@ -2550,6 +2550,10 @@ body.in-edit #ac {
   --proj-acc: #ff90a8;
 }
 
+.proj-panel[data-proj="garagewash"] {
+  --proj-acc: #4fc3e8;
+}
+
 /* layout alternado: la imagen siempre en la pista 1fr, solo cambia el lado */
 .proj-panel:nth-child(even) .proj-body {
   grid-template-columns: var(--meta-col) 1fr;
